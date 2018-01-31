@@ -365,6 +365,12 @@ STATIC mp_obj_t esp_config(size_t n_args, const mp_obj_t *args, mp_map_t *kwargs
                         cfg.ap.channel = mp_obj_get_int(kwargs->table[i].value);
                         break;
                     }
+                    case QS(MP_QSTR_protocol): {
+			if (!wifi_set_phy_mode(mp_obj_get_int(kwargs->table[i].value))) {
+                            mp_raise_ValueError("set protocol failed");
+                        }
+                        break;
+                    }
                     case QS(MP_QSTR_dhcp_hostname): {
                         req_if = STATION_IF;
                         if (self->if_id == STATION_IF) {
@@ -424,6 +430,9 @@ STATIC mp_obj_t esp_config(size_t n_args, const mp_obj_t *args, mp_map_t *kwargs
         case MP_QSTR_channel:
             req_if = SOFTAP_IF;
             val = MP_OBJ_NEW_SMALL_INT(cfg.ap.channel);
+            break;
+        case MP_QSTR_protocol:
+            val = MP_OBJ_NEW_SMALL_INT(wifi_get_phy_mode());
             break;
         case MP_QSTR_dhcp_hostname: {
             req_if = STATION_IF;
