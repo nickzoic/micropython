@@ -312,13 +312,19 @@ STATIC mp_obj_t esp_status(size_t n_args, const mp_obj_t *args) {
             wifi_sta_info_t *stations = (wifi_sta_info_t*)station_list.sta;
             mp_obj_t list = mp_obj_new_list(0, NULL);
             for (int i = 0; i < station_list.num; ++i) {
-                mp_obj_tuple_t *t = mp_obj_new_tuple(1, NULL);
+                mp_obj_tuple_t *t = mp_obj_new_tuple(2, NULL);
                 t->items[0] = mp_obj_new_bytes(stations[i].mac, sizeof(stations[i].mac));
+                t->items[1] = mp_obj_new_int(stations[i].rssi);
                 mp_obj_list_append(list, t);
             }
             return list;
         }
-
+        case (uintptr_t)MP_OBJ_NEW_QSTR(MP_QSTR_rssi): {
+            require_if(args[0], WIFI_IF_STA);
+            wifi_ap_record_t ap_info;
+            esp_wifi_sta_get_ap_info(&ap_info);
+            return mp_obj_new_int(ap_info.rssi);
+        }
         default:
             mp_raise_ValueError("unknown status param");
     }
