@@ -79,46 +79,35 @@ static inline void _get_bytes(mp_obj_t str, size_t len, uint8_t *dst) {
     memcpy(dst, data, len);
 }
 
-// this is crap of course but lets try it
+static mp_obj_t recv_cb_obj = MP_OBJ_NULL, send_cb_obj = MP_OBJ_NULL;
 
-typedef struct {
-	uint8_t macaddr[ESP_NOW_ETH_ALEN];
-	uint16_t len;
-	uint8_t data[ESP_NOW_MAX_DATA_LEN];
-} esp_now_queue_t;
-
-QueueHandle_t esp_now_queue;
-
-STATIC mp_obj_t espnow_recv() {
-    static esp_now_queue_t queue_item = { 0 };
-    int r = xQueueReceive(esp_now_queue, &queue_item, 0);
-    if (r != pdTRUE) return mp_const_none;
-    mp_obj_tuple_t *msg = mp_obj_new_tuple(2, NULL);
-    msg->items[0] = mp_obj_new_bytes(queue_item.macaddr, ESP_NOW_ETH_ALEN);
-    msg->items[1] = mp_obj_new_bytes(queue_item.data, queue_item.len);
-    return msg;
-}
-
-MP_DEFINE_CONST_FUN_OBJ_0(espnow_recv_obj, espnow_recv);
-
-void recv_cb(const uint8_t *macaddr, const uint8_t *data, int len) 
+void _recv_cb(const uint8_t *macaddr, const uint8_t *data, int len) 
 {
-    // this is double copying, perhaps I should be just queueing the pointers
-    static esp_now_queue_t queue_item = { 0 };
-    queue_item.len = len;
-    memcpy(queue_item.macaddr, macaddr, ESP_NOW_ETH_ALEN);
-    memcpy(queue_item.data, data, len);
-    xQueueSend(esp_now_queue, &queue_item, 0);
+    if (recv_cb_obj != MP_OBJ_NULL) {
+	mp_obj_t msg = mp_obj_new_bytes(macaddr, ESP_NOW_ETH_ALEN);
+	mp_obj_t mac = mp_obj_new_bytes(data, len);
+	mp_call_function_2_protected(recv_cb_obj, msg, mac);
+    }
 } 
+
+void _send_cb(const uint8_t *macaddr, esp_now_send_status_t status)
+{
+    if (send_cb_obj != MP_OBJ_NULL) {
+	mp_obj_t mac = mp_obj_new_bytes(macaddr, ESP_NOW_ETH_ALEN);
+	mp_call_function_2_protected(send_cb_obj, mac, status ? mp_const_false : mp_const_true);
+    }
+}
 
 static int initialized = 0;
 
 STATIC mp_obj_t espnow_init() {
     if (!initialized) {
         esp_now_init();
-	esp_now_queue = xQueueCreate(5, sizeof(esp_now_queue_t));
         initialized = 1;
-	esp_now_register_recv_cb(recv_cb);
+	recv_cb_obj = MP_OBJ_NULL;
+	send_cb_obj = MP_OBJ_NULL;
+	esp_now_register_recv_cb(_recv_cb);
+	esp_now_register_send_cb(_send_cb);
     }
     return mp_const_none;
 }
@@ -127,7 +116,8 @@ MP_DEFINE_CONST_FUN_OBJ_0(espnow_init_obj, espnow_init);
 STATIC mp_obj_t espnow_deinit() {
     if (initialized) {
         esp_now_deinit();
-	vQueueDelete(esp_now_queue);
+	recv_cb_obj = MP_OBJ_NULL;
+	send_cb_obj = MP_OBJ_NULL;
         initialized = 0;
     }
     return mp_const_none;
@@ -156,23 +146,43 @@ STATIC mp_obj_t espnow_add_peer(size_t n_args, const mp_obj_t *args) {
 }
 MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(espnow_add_peer_obj, 2, 3, espnow_add_peer);
 
-STATIC mp_obj_t espnow_send(mp_obj_t addr, mp_obj_t msg) {
-    mp_uint_t len1;
-    const uint8_t *buf1 = (const uint8_t *)mp_obj_str_get_data(addr, &len1);
-    mp_uint_t len2;
-    const uint8_t *buf2 = (const uint8_t *)mp_obj_str_get_data(msg, &len2);
-    if (len1 != ESP_NOW_ETH_ALEN) mp_raise_ValueError("addr invalid");
-    if (len2 > ESP_NOW_MAX_DATA_LEN) mp_raise_ValueError("Msg too long");
-    esp_espnow_exceptions(esp_now_send(buf1, buf2, len2));
+STATIC mp_obj_t espnow_del_peer(mp_obj_t addr) {
+    uint8_t peer_addr[ESP_NOW_ETH_ALEN];
+    _get_bytes(addr, ESP_NOW_ETH_ALEN, peer_addr);
+    esp_espnow_exceptions(esp_now_del_peer(peer_addr));
+    return mp_const_none;
+}
+MP_DEFINE_CONST_FUN_OBJ_1(espnow_del_peer_obj, espnow_del_peer);
+
+STATIC mp_obj_t espnow_send(mp_obj_t addr, mp_obj_t mesg) {
+    uint8_t peer_addr[ESP_NOW_ETH_ALEN];
+    _get_bytes(addr, ESP_NOW_ETH_ALEN, peer_addr);
+
+    mp_uint_t mesg_len;
+    const uint8_t *mesg_buf = (const uint8_t *)mp_obj_str_get_data(mesg, &mesg_len);
+    if (mesg_len > ESP_NOW_MAX_DATA_LEN) mp_raise_ValueError("Mesg too long");
+    esp_espnow_exceptions(esp_now_send(peer_addr, mesg_buf, mesg_len));
     return mp_const_none;
 }
 MP_DEFINE_CONST_FUN_OBJ_2(espnow_send_obj, espnow_send);
 
-STATIC mp_obj_t espnow_send_all(mp_obj_t msg) {
-    mp_uint_t len;
-    const uint8_t *buf = (const uint8_t *)mp_obj_str_get_data(msg, &len);
-    if (len > ESP_NOW_MAX_DATA_LEN) mp_raise_ValueError("Msg too long");
-    esp_espnow_exceptions(esp_now_send(NULL, buf, len));
+STATIC mp_obj_t espnow_set_recv_cb(mp_obj_t callback) {
+    recv_cb_obj = callback;
+    return mp_const_none;
+}
+MP_DEFINE_CONST_FUN_OBJ_1(espnow_set_recv_cb_obj, espnow_set_recv_cb);
+
+STATIC mp_obj_t espnow_set_send_cb(mp_obj_t callback) {
+    send_cb_obj = callback;
+    return mp_const_none;
+}
+MP_DEFINE_CONST_FUN_OBJ_1(espnow_set_send_cb_obj, espnow_set_send_cb);
+
+STATIC mp_obj_t espnow_send_all(mp_obj_t mesg) {
+    mp_uint_t mesg_len;
+    const uint8_t *mesg_buf = (const uint8_t *)mp_obj_str_get_data(mesg, &mesg_len);
+    if (mesg_len > ESP_NOW_MAX_DATA_LEN) mp_raise_ValueError("Mesg too long");
+    esp_espnow_exceptions(esp_now_send(NULL, mesg_buf, mesg_len));
     return mp_const_none;
 }
 MP_DEFINE_CONST_FUN_OBJ_1(espnow_send_all_obj, espnow_send_all);
@@ -184,7 +194,8 @@ STATIC const mp_rom_map_elem_t espnow_globals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_add_peer), MP_ROM_PTR(&espnow_add_peer_obj) },
     { MP_ROM_QSTR(MP_QSTR_send), MP_ROM_PTR(&espnow_send_obj) },
     { MP_ROM_QSTR(MP_QSTR_send_all), MP_ROM_PTR(&espnow_send_all_obj) },
-    { MP_ROM_QSTR(MP_QSTR_recv), MP_ROM_PTR(&espnow_recv_obj) },
+    { MP_ROM_QSTR(MP_QSTR_set_recv_cb), MP_ROM_PTR(&espnow_set_recv_cb_obj) },
+    { MP_ROM_QSTR(MP_QSTR_set_send_cb), MP_ROM_PTR(&espnow_set_send_cb_obj) },
 };
 STATIC MP_DEFINE_CONST_DICT(espnow_globals_dict, espnow_globals_dict_table);
 
