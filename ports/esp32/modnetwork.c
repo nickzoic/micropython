@@ -106,11 +106,6 @@ static inline void esp_exceptions(esp_err_t e) {
 
 #define ESP_EXCEPTIONS(x) do { esp_exceptions(x); } while (0);
 
-typedef struct _wlan_if_obj_t {
-    mp_obj_base_t base;
-    int if_id;
-} wlan_if_obj_t;
-
 const mp_obj_type_t wlan_if_type;
 STATIC const wlan_if_obj_t wlan_sta_obj = {{&wlan_if_type}, WIFI_IF_STA};
 STATIC const wlan_if_obj_t wlan_ap_obj = {{&wlan_if_type}, WIFI_IF_AP};
