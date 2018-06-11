@@ -36,6 +36,7 @@
 #include "shared-bindings/microcontroller/__init__.h"
 #include "shared-bindings/pulseio/PulseIn.h"
 #include "common-hal/microcontroller/__init__.h"
+#include "intr.h"
 
 static void pulsein_set_interrupt(pulseio_pulsein_obj_t *self, bool rising, bool falling) {
     ETS_GPIO_INTR_DISABLE();
@@ -93,7 +94,7 @@ void common_hal_pulseio_pulsein_construct(pulseio_pulsein_obj_t* self,
     self->last_us = 0;
     self->paused = false;
 
-    microcontroller_pin_register_intr_handler(self->pin->gpio_number,
+    intr_gpio_register_handler(self->pin->gpio_number,
             pulseio_pulsein_interrupt_handler, (void *)self);
     pulsein_set_interrupt(self, !idle_state, idle_state);
 }
@@ -104,7 +105,7 @@ bool common_hal_pulseio_pulsein_deinited(pulseio_pulsein_obj_t* self) {
 
 void common_hal_pulseio_pulsein_deinit(pulseio_pulsein_obj_t* self) {
     pulsein_set_interrupt(self, false, false);
-    microcontroller_pin_register_intr_handler(self->pin->gpio_number, NULL, NULL);
+    intr_gpio_register_handler(self->pin->gpio_number, NULL, NULL);
     PIN_FUNC_SELECT(self->pin->peripheral, 0);
     m_free(self->buffer);
     self->buffer = NULL;

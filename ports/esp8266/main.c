@@ -41,6 +41,7 @@
 #include "user_interface.h"
 #include "common-hal/microcontroller/Pin.h"
 #include "common-hal/pulseio/PWMOut.h"
+#include "intr.h"
 
 STATIC char heap[36 * 1024];
 
@@ -107,7 +108,7 @@ STATIC void mp_reset(void) {
     extern void esp_native_code_init(void);
     esp_native_code_init();
     #endif
-    pin_init0();
+    intr_gpio_initialize();
     readline_init0();
     dupterm_task_init();
     pwmout_reset();

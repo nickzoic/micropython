@@ -36,28 +36,6 @@
 bool adc_in_use;
 bool gpio16_in_use;
 
-typedef struct {
-    void (*func)(void *);
-    void *data;
-} pin_intr_handler_t;
-
-static pin_intr_handler_t _pin_intr_handlers[GPIO_PIN_COUNT];
-
-void microcontroller_pin_call_intr_handlers(uint32_t status) {
-    status &= (1 << GPIO_PIN_COUNT) - 1;
-    for (int p = 0; status; ++p, status >>= 1) {
-        if ((status & 1) && _pin_intr_handlers[p].func) {
-            _pin_intr_handlers[p].func(_pin_intr_handlers[p].data);
-        }
-    }
-}
-
-void microcontroller_pin_register_intr_handler(uint8_t gpio_number, void (*func)(void *), void *data) {
-    common_hal_mcu_disable_interrupts();
-    _pin_intr_handlers[gpio_number] = (pin_intr_handler_t){ func, data };
-    common_hal_mcu_enable_interrupts();
-}
-
 bool common_hal_mcu_pin_is_free(const mcu_pin_obj_t* pin) {
     if (pin == &pin_TOUT) {
         return !adc_in_use;

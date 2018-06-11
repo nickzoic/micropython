@@ -31,13 +31,35 @@
 #include "common-hal/pulseio/PulseIn.h"
 
 // this is in a separate file so it can go in iRAM
+
+typedef struct {
+    void (*func)(void *);
+    void *data;
+} intr_gpio_handler_t;
+
+static intr_gpio_handler_t intr_gpio_handlers[GPIO_PIN_COUNT] = {{0}};
+
+void intr_gpio_register_handler(uint8_t gpio_number, void (*func)(void *), void *data) {
+    ETS_GPIO_INTR_DISABLE();
+    intr_gpio_handlers[gpio_number] = (intr_gpio_handler_t){ func, data };
+    ETS_GPIO_INTR_ENABLE();
+}
+
 void pin_intr_handler_iram(void *arg) {
     uint32_t status = GPIO_REG_READ(GPIO_STATUS_ADDRESS);
     GPIO_REG_WRITE(GPIO_STATUS_W1TC_ADDRESS, status);
 
-    // machine.Pin handlers
-    pin_intr_handler(status);
-
-    // microcontroller.Pin handlers
-    microcontroller_pin_call_intr_handlers(status);
+    status &= (1 << GPIO_PIN_COUNT) - 1;
+    for (int p = 0; status; ++p, status >>= 1) {
+        if ((status & 1) && intr_gpio_handlers[p].func) {
+            intr_gpio_handlers[p].func(intr_gpio_handlers[p].data);
+        }
+    }
 }
+
+void intr_gpio_initialize() {
+    ETS_GPIO_INTR_DISABLE();
+    ETS_GPIO_INTR_ATTACH(pin_intr_handler_iram, NULL);
+    ETS_GPIO_INTR_ENABLE();
+}
+
