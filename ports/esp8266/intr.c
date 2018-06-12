@@ -27,21 +27,16 @@
 #include "etshal.h"
 #include "ets_alt_task.h"
 
+#include "py/mpstate.h"
 #include "modmachine.h"
 #include "common-hal/pulseio/PulseIn.h"
 
 // this is in a separate file so it can go in iRAM
 
-typedef struct {
-    void (*func)(void *);
-    void *data;
-} intr_gpio_handler_t;
-
-static intr_gpio_handler_t intr_gpio_handlers[GPIO_PIN_COUNT] = {{0}};
-
 void intr_gpio_register_handler(uint8_t gpio_number, void (*func)(void *), void *data) {
     ETS_GPIO_INTR_DISABLE();
-    intr_gpio_handlers[gpio_number] = (intr_gpio_handler_t){ func, data };
+    MP_STATE_PORT(pin_irq_handler_func)[gpio_number] = func;
+    MP_STATE_PORT(pin_irq_handler_data)[gpio_number] = data;
     ETS_GPIO_INTR_ENABLE();
 }
 
@@ -51,8 +46,11 @@ void pin_intr_handler_iram(void *arg) {
 
     status &= (1 << GPIO_PIN_COUNT) - 1;
     for (int p = 0; status; ++p, status >>= 1) {
-        if ((status & 1) && intr_gpio_handlers[p].func) {
-            intr_gpio_handlers[p].func(intr_gpio_handlers[p].data);
+        if (status & 1) {
+            void (*func)(void *) = MP_STATE_PORT(pin_irq_handler_func)[p];
+            if (func) {
+                func(MP_STATE_PORT(pin_irq_handler_data)[p]);
+            }
         }
     }
 }
