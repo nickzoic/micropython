@@ -43,6 +43,9 @@ void pulseout_set(pulseio_pulseout_obj_t *self, bool state) {
 void common_hal_pulseio_pulseout_construct(pulseio_pulseout_obj_t* self,
                                             const pulseio_pwmout_obj_t* carrier) {
     self->pin = carrier->pin;
+    if (self->pin->peripheral == SPECIAL_CASE) {
+        mp_raise_msg_varg(&mp_type_ValueError, "No PulseOut support for %q", self->pin->name );
+    }
 }
 
 bool common_hal_pulseio_pulseout_deinited(pulseio_pulseout_obj_t* self) {
