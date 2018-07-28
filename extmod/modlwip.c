@@ -36,6 +36,7 @@
 #include "py/mphal.h"
 
 #include "lib/netutils/netutils.h"
+#include "shared-bindings/random/__init__.h"
 
 #include "lwip/init.h"
 #include "lwip/tcp.h"
@@ -277,7 +278,7 @@ typedef struct _lwip_socket_obj_t {
     mp_obj_t callback;
     byte peer[4];
     mp_uint_t peer_port;
-    mp_uint_t timeout;
+    mp_int_t timeout;
     uint16_t recv_offset;
 
     uint8_t domain;
@@ -522,7 +523,7 @@ STATIC mp_uint_t lwip_tcp_send(lwip_socket_obj_t *socket, const byte *buf, mp_ui
         // reset) by error callback.
         // Avoid sending too small packets, so wait until at least 16 bytes available
         while (socket->state >= STATE_CONNECTED && (available = tcp_sndbuf(socket->pcb.tcp)) < 16) {
-            if (socket->timeout != -1 && mp_hal_ticks_ms() - start > socket->timeout) {
+            if (socket->timeout != -1 && mp_hal_ticks_ms() - start > (mp_uint_t)socket->timeout) {
                 *_errno = MP_ETIMEDOUT;
                 return MP_STREAM_ERROR;
             }
@@ -568,7 +569,7 @@ STATIC mp_uint_t lwip_tcp_receive(lwip_socket_obj_t *socket, byte *buf, mp_uint_
 
         mp_uint_t start = mp_hal_ticks_ms();
         while (socket->state == STATE_CONNECTED && socket->incoming.pbuf == NULL) {
-            if (socket->timeout != -1 && mp_hal_ticks_ms() - start > socket->timeout) {
+            if (socket->timeout != -1 && mp_hal_ticks_ms() - start > (mp_uint_t)socket->timeout) {
                 *_errno = MP_ETIMEDOUT;
                 return -1;
             }
@@ -885,7 +886,7 @@ STATIC mp_obj_t lwip_socket_send(mp_obj_t self_in, mp_obj_t buf_in) {
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(buf_in, &bufinfo, MP_BUFFER_READ);
 
-    mp_uint_t ret = 0;
+    mp_int_t ret = 0;
     switch (socket->type) {
         case MOD_NETWORK_SOCK_STREAM: {
             ret = lwip_tcp_send(socket, bufinfo.buf, bufinfo.len, &_errno);
@@ -914,7 +915,7 @@ STATIC mp_obj_t lwip_socket_recv(mp_obj_t self_in, mp_obj_t len_in) {
     vstr_t vstr;
     vstr_init_len(&vstr, len);
 
-    mp_uint_t ret = 0;
+    mp_int_t ret = 0;
     switch (socket->type) {
         case MOD_NETWORK_SOCK_STREAM: {
             ret = lwip_tcp_receive(socket, (byte*)vstr.buf, len, &_errno);
@@ -949,7 +950,7 @@ STATIC mp_obj_t lwip_socket_sendto(mp_obj_t self_in, mp_obj_t data_in, mp_obj_t 
     uint8_t ip[NETUTILS_IPV4ADDR_BUFSIZE];
     mp_uint_t port = netutils_parse_inet_addr(addr_in, ip, NETUTILS_BIG);
 
-    mp_uint_t ret = 0;
+    mp_int_t ret = 0;
     switch (socket->type) {
         case MOD_NETWORK_SOCK_STREAM: {
             ret = lwip_tcp_send(socket, bufinfo.buf, bufinfo.len, &_errno);
@@ -980,7 +981,7 @@ STATIC mp_obj_t lwip_socket_recvfrom(mp_obj_t self_in, mp_obj_t len_in) {
     byte ip[4];
     mp_uint_t port;
 
-    mp_uint_t ret = 0;
+    mp_int_t ret = 0;
     switch (socket->type) {
         case MOD_NETWORK_SOCK_STREAM: {
             memcpy(ip, &socket->peer, sizeof(socket->peer));
@@ -1017,7 +1018,7 @@ STATIC mp_obj_t lwip_socket_sendall(mp_obj_t self_in, mp_obj_t buf_in) {
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(buf_in, &bufinfo, MP_BUFFER_READ);
 
-    mp_uint_t ret = 0;
+    mp_int_t ret = 0;
     switch (socket->type) {
         case MOD_NETWORK_SOCK_STREAM: {
             if (socket->timeout == 0) {
@@ -1275,10 +1276,19 @@ STATIC const mp_obj_type_t lwip_socket_type = {
     .locals_dict = (mp_obj_dict_t*)&lwip_socket_locals_dict,
 };
 
+extern u32_t sys_now(void) {
+    return mp_hal_ticks_ms();
+}
+
+extern u32_t sys_rand(void) {
+    return shared_modules_random_getrandbits(32);
+}
+
 /******************************************************************************/
 // Support functions for memory protection. lwIP has its own memory management
 // routines for its internal structures, and since they might be called in
 // interrupt handlers, they need some protection.
+sys_prot_t sys_arch_protect(void);
 sys_prot_t sys_arch_protect() {
     return (sys_prot_t)MICROPY_BEGIN_ATOMIC_SECTION();
 }
@@ -1310,6 +1320,7 @@ void mod_lwip_deregister_poll(void (* poll)(void *arg), void *poll_arg) {
 /******************************************************************************/
 // The lwip global functions.
 
+STATIC mp_obj_t mod_lwip_reset(void);
 STATIC mp_obj_t mod_lwip_reset() {
     lwip_init();
     lwip_poll_list.poll = NULL;
@@ -1317,6 +1328,7 @@ STATIC mp_obj_t mod_lwip_reset() {
 }
 MP_DEFINE_CONST_FUN_OBJ_0(mod_lwip_reset_obj, mod_lwip_reset);
 
+STATIC mp_obj_t mod_lwip_callback(void);
 STATIC mp_obj_t mod_lwip_callback() {
     if (lwip_poll_list.poll != NULL) {
         lwip_poll_list.poll(lwip_poll_list.poll_arg);
@@ -1413,6 +1425,7 @@ MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(lwip_getaddrinfo_obj, 2, 6, lwip_getaddrinfo
 
 // Debug functions
 
+STATIC mp_obj_t lwip_print_pcbs(void);
 STATIC mp_obj_t lwip_print_pcbs() {
     tcp_debug_print_pcbs();
     return mp_const_none;

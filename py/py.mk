@@ -33,13 +33,13 @@ endif
 endif
 
 #ifeq ($(MICROPY_PY_LWIP),1)
-#CFLAGS_MOD += -DMICROPY_PY_LWIP=1 -I../lib/lwip/src/include -I../lib/lwip/src/include/ipv4 -I../extmod/lwip-include
+CFLAGS_MOD += -DMICROPY_PY_LWIP=1 -I../lib/lwip/src/include -I../lib/lwip/src/include/ipv4 -I../extmod/lwip-include
 #endif
 
 ifeq ($(MICROPY_PY_LWIP),1)
 LWIP_DIR = lib/lwip/src
 INC += -I$(TOP)/lib/lwip/src/include -I$(TOP)/lib/lwip/src/include/ipv4 -I$(TOP)/extmod/lwip-include
-CFLAGS_MOD += -DMICROPY_PY_LWIP=1
+CFLAGS_MOD += -DMICROPY_PY_LWIP=1 -DLWIP_IPV4=1 -DLWIP_IGMP=1
 SRC_MOD += extmod/modlwip.c lib/netutils/netutils.c
 SRC_MOD += $(addprefix $(LWIP_DIR)/,\
 	core/def.c \

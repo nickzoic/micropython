@@ -12,7 +12,7 @@ typedef int16_t s16_t;
 typedef uint32_t u32_t;
 typedef int32_t s32_t;
 
-typedef u32_t mem_ptr_t;
+//typedef u32_t mem_ptr_t;
 
 #define U16_F "hu"
 #define S16_F "hd"
@@ -24,7 +24,9 @@ typedef u32_t mem_ptr_t;
 #define X8_F  "02x"
 #define SZT_F "u"
 
+#ifndef BYTE_ORDER
 #define BYTE_ORDER LITTLE_ENDIAN
+#endif
 
 #define LWIP_CHKSUM_ALGORITHM 2
 
