@@ -5,6 +5,8 @@
 
 #define MICROPY_OBJ_REPR            (MICROPY_OBJ_REPR_C)
 
+#include "mpconfigboard.h"
+
 // options to control how MicroPython is built
 #define MICROPY_QSTR_BYTES_IN_HASH  (1)
 #define MICROPY_ALLOC_PATH_MAX      (256)
@@ -66,6 +68,18 @@
 #define MICROPY_FLOAT_IMPL          (MICROPY_FLOAT_IMPL_FLOAT)
 #define MICROPY_FLOAT_HIGH_QUALITY_HASH (1)
 #define MICROPY_STREAMS_NON_BLOCK   (1)
+
+#ifndef MICROPY_PY_NETWORK
+#define MICROPY_PY_NETWORK          (0)
+#endif
+
+#ifndef MICROPY_PY_WIZNET5K
+#define MICROPY_PY_WIZNET5K         (0)
+#endif
+
+#ifndef MICROPY_PY_CC3K
+#define MICROPY_PY_CC3K             (0)
+#endif
 
 // fatfs configuration used in ffconf.h
 #define MICROPY_FATFS_ENABLE_LFN       (1)

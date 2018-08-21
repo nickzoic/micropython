@@ -7,7 +7,6 @@ else
   endif
 endif
 
-
 # If the build directory is not given, make it reflect the board name.
 BUILD ?= build-$(BOARD)
 
@@ -62,17 +61,14 @@ BASE_CFLAGS = \
 	-fno-strict-aliasing \
 	-Wdouble-promotion \
 	-Wno-endif-labels \
-	-Wstrict-prototypes \
 	-Werror-implicit-function-declaration \
 	-Wpointer-arith \
 	-Wfloat-equal \
 	-Wundef \
 	-Wshadow \
 	-Wwrite-strings \
-	-Wsign-compare \
 	-Wmissing-format-attribute \
 	-Wno-deprecated-declarations \
-	-Wpacked \
 	-Wnested-externs \
 	-Wunreachable-code \
 	-Wcast-align \
@@ -86,6 +82,7 @@ BASE_CFLAGS = \
 	-DCIRCUITPY_SAFE_RESTART_WORD=0xDEADBEEF \
 	--param max-inline-insns-single=500
 
+# XXX temporarily removed -Wstrict-prototypes -Wsign-compare -Wpacked
 
 # NDEBUG disables assert() statements. This reduces code size pretty dramatically, per tannewt.
 
@@ -286,6 +283,52 @@ SRC_C = \
 	$(BUILD)/autogen_usb_descriptor.c \
 	freetouch/adafruit_ptc.c \
 	supervisor/shared/memory.c
+
+ifeq ($(MICROPY_PY_NETWORK),1)
+CFLAGS += -DMICROPY_PY_NETWORK=1
+
+SRC_C += modnetwork.c
+
+ifeq ($(MICROPY_PY_LWIP),1)
+INC := -Ilwip_inc $(INC)
+endif
+
+ifneq ($(MICROPY_PY_WIZNET5K),0)
+WIZNET5K_DIR=drivers/wiznet5k
+INC += -I$(TOP)/$(WIZNET5K_DIR)
+CFLAGS_MOD += -DMICROPY_PY_WIZNET5K=$(MICROPY_PY_WIZNET5K) -D_WIZCHIP_=$(MICROPY_PY_WIZNET5K)
+SRC_MOD += network_wiznet5k.c # modnwwiznet5k.c
+SRC_MOD += $(addprefix $(WIZNET5K_DIR)/,\
+        ethernet/w$(MICROPY_PY_WIZNET5K)/w$(MICROPY_PY_WIZNET5K).c \
+        ethernet/wizchip_conf.c \
+        ethernet/socket.c \
+        internet/dns/dns.c \
+        )
+endif
+
+# for CC3000 module
+ifeq ($(MICROPY_PY_CC3K),1)
+CC3000_DIR=drivers/cc3000
+INC += -I$(TOP)/$(CC3000_DIR)/inc
+CFLAGS_MOD += -DMICROPY_PY_CC3K=1
+SRC_MOD += modnwcc3k.c
+SRC_MOD += $(addprefix $(CC3000_DIR)/src/,\
+        cc3000_common.c \
+        evnt_handler.c \
+        hci.c \
+        netapp.c \
+        nvmem.c \
+        security.c \
+        socket.c \
+        wlan.c \
+        ccspi.c \
+        inet_ntop.c \
+        inet_pton.c \
+        patch.c \
+        patch_prog.c \
+        )
+endif
+endif
 
 # Choose which flash filesystem impl to use.
 # (Right now INTERNAL_FLASH_FILESYSTEM and SPI_FLASH_FILESYSTEM are mutually exclusive.
