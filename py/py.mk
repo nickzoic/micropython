@@ -75,6 +75,7 @@ SRC_MOD += $(addprefix $(LWIP_DIR)/,\
 	core/ipv6/dhcp6.c \
 	core/ipv6/ethip6.c \
 	core/ipv6/icmp6.c \
+        netif/ethernet.c \
 	)
 
 ifeq ($(MICROPY_PY_LWIP_SLIP),1)

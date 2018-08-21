@@ -24,8 +24,8 @@
 
 #define SO_REUSE                        1
 
-extern uint32_t rng_get(void);
-#define LWIP_RAND() rng_get()
+extern uint32_t shared_modules_random_getrandbits(uint8_t);
+#define LWIP_RAND() shared_modules_random_getrandbits(32)
 
 // default
 // lwip takes 15800 bytes; TCP d/l: 380k/s local, 7.2k/s remote
