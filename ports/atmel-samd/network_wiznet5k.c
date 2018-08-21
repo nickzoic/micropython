@@ -27,8 +27,16 @@
 #include <stdio.h>
 #include "py/runtime.h"
 #include "py/mphal.h"
-//#include "spi.h"
 #include "modnetwork.h"
+
+#include "shared-bindings/digitalio/DigitalInOut.h"
+#include "shared-bindings/digitalio/DriveMode.h"
+#include "shared-bindings/busio/SPI.h"
+
+// XXX this same name is defined by both asf4/samd51/hal/utils/include/err_codes.h
+// (as a #define) and  ../../lib/lwip/src/include/lwip/err.h (as an enum) ... it's not
+// used in this file so just remove it ... 
+#undef ERR_TIMEOUT
 
 #if MICROPY_PY_WIZNET5K && MICROPY_PY_LWIP
 
@@ -44,9 +52,9 @@
 typedef struct _wiznet5k_obj_t {
     mod_network_nic_type_t base;
     mp_uint_t cris_state;
-    //const spi_t *spi;
-    //mp_hal_pin_obj_t cs;
-    //mp_hal_pin_obj_t rst;
+    busio_spi_obj_t *spi;
+    digitalio_digitalinout_obj_t cs;
+    digitalio_digitalinout_obj_t rst;
     uint8_t eth_frame[1514];
     struct netif netif;
     struct dhcp dhcp_struct;
@@ -67,47 +75,39 @@ STATIC void wiz_cris_exit(void) {
 }
 
 STATIC void wiz_cs_select(void) {
-    //mp_hal_pin_low(wiznet5k_obj.cs);
+    common_hal_digitalio_digitalinout_set_value(&wiznet5k_obj.cs, 0);
 }
 
 STATIC void wiz_cs_deselect(void) {
-    //mp_hal_pin_high(wiznet5k_obj.cs);
+    common_hal_digitalio_digitalinout_set_value(&wiznet5k_obj.cs, 1);
 }
 
 STATIC void wiz_spi_read(uint8_t *buf, uint32_t len) {
-    //HAL_StatusTypeDef status = HAL_SPI_Receive(wiznet5k_obj.spi->spi, buf, len, 5000);
-    //(void)status;
+    (void)common_hal_busio_spi_read(wiznet5k_obj.spi, buf, len, 0);
 }
 
 STATIC void wiz_spi_write(const uint8_t *buf, uint32_t len) {
-    //HAL_StatusTypeDef status = HAL_SPI_Transmit(wiznet5k_obj.spi->spi, (uint8_t*)buf, len, 5000);
-    //(void)status;
+    (void)common_hal_busio_spi_write(wiznet5k_obj.spi, buf, len);
 }
 
 STATIC void wiznet5k_init(void) {
     // SPI configuration
-    //SPI_InitTypeDef *init = &wiznet5k_obj.spi->spi->Init;
-    //init->Mode = SPI_MODE_MASTER;
-    //init->Direction = SPI_DIRECTION_2LINES;
-    //init->DataSize = SPI_DATASIZE_8BIT;
-    //init->CLKPolarity = SPI_POLARITY_LOW; // clock is low when idle
-    //init->CLKPhase = SPI_PHASE_1EDGE; // data latched on first edge, which is rising edge for low-idle
-    //init->NSS = SPI_NSS_SOFT;
-    //init->BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2; // clock freq = f_PCLK / this_prescale_value; Wiz820i can do up to 80MHz
-    //init->FirstBit = SPI_FIRSTBIT_MSB;
-    //init->TIMode = SPI_TIMODE_DISABLED;
-    //init->CRCCalculation = SPI_CRCCALCULATION_DISABLED;
-    //init->CRCPolynomial = 7; // unused
-    //spi_init(wiznet5k_obj.spi, false);
+    
+    common_hal_busio_spi_configure(wiznet5k_obj.spi,
+        12000000,  // BAUDRATE 12MHz
+        0, // LOW POLARITY
+        0, // FIRST PHASE TRANSITION
+        8 // 8 BITS
+    );
 
-    //mp_hal_pin_output(wiznet5k_obj.cs);
-    //mp_hal_pin_output(wiznet5k_obj.rst);
+    common_hal_digitalio_digitalinout_switch_to_output(&wiznet5k_obj.cs, 1, DRIVE_MODE_PUSH_PULL);
+    common_hal_digitalio_digitalinout_switch_to_output(&wiznet5k_obj.rst, 1, DRIVE_MODE_PUSH_PULL); 
 
     // Reset the chip
-    //mp_hal_pin_low(wiznet5k_obj.rst);
-    //mp_hal_delay_ms(1); // datasheet says 2us
-    //mp_hal_pin_high(wiznet5k_obj.rst);
-    //mp_hal_delay_ms(150); // datasheet says 150ms
+    common_hal_digitalio_digitalinout_set_value(&wiznet5k_obj.rst, 0);
+    mp_hal_delay_ms(1); // datasheet says 2us
+    common_hal_digitalio_digitalinout_set_value(&wiznet5k_obj.rst, 1);
+    mp_hal_delay_ms(150); // datasheet says 150ms
 
     // Set physical interface callbacks
     reg_wizchip_cris_cbfunc(wiz_cris_enter, wiz_cris_exit);
@@ -242,10 +242,14 @@ STATIC mp_obj_t wiznet5k_make_new(const mp_obj_type_t *type, size_t n_args, size
     mp_arg_check_num(n_args, n_kw, 3, 3, false);
 
     //const spi_t *spi = spi_from_mp_obj(args[0]);
-    //mp_hal_pin_obj_t cs = pin_find(args[1]);
-    //mp_hal_pin_obj_t rst = pin_find(args[2]);
+
+    // XXX doesn't really work with the below code
+    wiznet5k_obj.spi = MP_OBJ_TO_PTR(args[0]);
+    common_hal_digitalio_digitalinout_construct(&wiznet5k_obj.cs, args[1]);
+    common_hal_digitalio_digitalinout_construct(&wiznet5k_obj.rst, args[2]);
 
     // Access the existing object, if it has been constructed with the same hardware interface
+    // XXX this is deiniting if any of SPI, CS, RST are NOT EQUAL to the current ones
     if (wiznet5k_obj.base.base.type == &mod_network_nic_type_wiznet5k) {
         //if (!(wiznet5k_obj.spi == spi && wiznet5k_obj.cs == cs && wiznet5k_obj.rst == rst
         //    && wiznet5k_obj.netif.flags != 0)) {
@@ -257,9 +261,6 @@ STATIC mp_obj_t wiznet5k_make_new(const mp_obj_type_t *type, size_t n_args, size
     wiznet5k_obj.base.base.type = &mod_network_nic_type_wiznet5k;
     wiznet5k_obj.base.poll_callback = wiznet5k_lwip_poll;
     wiznet5k_obj.cris_state = 0;
-    //wiznet5k_obj.spi = spi;
-    //wiznet5k_obj.cs = cs;
-    //wiznet5k_obj.rst = rst;
 
     // Return wiznet5k object
     return MP_OBJ_FROM_PTR(&wiznet5k_obj);
