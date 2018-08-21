@@ -285,7 +285,9 @@ SRC_C = \
 	lib/mp-readline/readline.c \
 	$(BUILD)/autogen_usb_descriptor.c \
 	freetouch/adafruit_ptc.c \
-	supervisor/shared/memory.c
+	supervisor/shared/memory.c \
+	modnetwork.c
+
 
 # Choose which flash filesystem impl to use.
 # (Right now INTERNAL_FLASH_FILESYSTEM and SPI_FLASH_FILESYSTEM are mutually exclusive.
@@ -360,7 +362,6 @@ SRC_LIBM = $(addprefix lib/,\
 	libm/atan2f.c \
 	)
 endif
-
 
 # These don't have corresponding files in each port but are still located in
 # shared-bindings to make it clear what the contents of the modules are.

@@ -31,6 +31,7 @@
 #include "py/objlist.h"
 #include "py/runtime.h"
 #include "py/mphal.h"
+#include "py/mperrno.h"
 #include "lib/netutils/netutils.h"
 #include "modnetwork.h"
 
@@ -92,7 +93,10 @@ mp_obj_t mod_network_find_nic(const uint8_t *ip) {
         return nic;
     }
 
-    nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "no available NIC"));
+    // XXX temporary fix
+    //nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "no available NIC"));
+    mp_raise_OSError(MP_EIO);
+    // /XXX
 }
 
 STATIC mp_obj_t network_route(void) {

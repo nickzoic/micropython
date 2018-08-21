@@ -3,7 +3,25 @@
 #ifndef __INCLUDED_MPCONFIGPORT_H
 #define __INCLUDED_MPCONFIGPORT_H
 
+// This port is intended to be 32-bit, but unfortunately, int32_t for
+// different targets may be defined in different ways - either as int
+// or as long. This requires different printf formatting specifiers
+// to print such value. So, we avoid int32_t and use int directly.
+#define UINT_FMT "%u"
+#define INT_FMT "%d"
+typedef int mp_int_t; // must be pointer size
+typedef unsigned mp_uint_t; // must be pointer size
+
+typedef long mp_off_t;
+
 #define MICROPY_OBJ_REPR            (MICROPY_OBJ_REPR_C)
+
+#include "mpconfigboard.h"
+
+// XXX temporary
+#define MICROPY_PY_WIZNET5K (0)
+#define MICROPY_PY_CC3K (0)
+// /XXX
 
 // options to control how MicroPython is built
 #define MICROPY_QSTR_BYTES_IN_HASH  (1)
@@ -67,6 +85,10 @@
 #define MICROPY_FLOAT_HIGH_QUALITY_HASH (1)
 #define MICROPY_STREAMS_NON_BLOCK   (1)
 
+#ifndef MICROPY_PY_NETWORK
+#define MICROPY_PY_NETWORK          (0)
+#endif
+
 // fatfs configuration used in ffconf.h
 #define MICROPY_FATFS_ENABLE_LFN       (1)
 #define MICROPY_FATFS_LFN_CODE_PAGE    (437) /* 1=SFN/ANSI 437=LFN/U.S.(OEM) */
@@ -110,16 +132,6 @@
 #define MICROPY_MAX_STACK_USAGE       (1)
 #endif
 
-// This port is intended to be 32-bit, but unfortunately, int32_t for
-// different targets may be defined in different ways - either as int
-// or as long. This requires different printf formatting specifiers
-// to print such value. So, we avoid int32_t and use int directly.
-#define UINT_FMT "%u"
-#define INT_FMT "%d"
-typedef int mp_int_t; // must be pointer size
-typedef unsigned mp_uint_t; // must be pointer size
-
-typedef long mp_off_t;
 
 #define MP_PLAT_PRINT_STRN(str, len) mp_hal_stdout_tx_strn_cooked(str, len)
 
@@ -344,6 +356,7 @@ extern const struct _mp_obj_module_t usb_hid_module;
     mp_obj_t rtc_time_source; \
     FLASH_ROOT_POINTERS \
     mp_obj_t gamepad_singleton; \
+    mp_obj_list_t mod_network_nic_list; \
 
 void run_background_tasks(void);
 #define MICROPY_VM_HOOK_LOOP run_background_tasks();
