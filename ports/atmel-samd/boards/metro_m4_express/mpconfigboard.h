@@ -3,8 +3,6 @@
 
 #define CIRCUITPY_MCU_FAMILY samd51
 
-#define MICROPY_PY_NETWORK  (1)
-
 // This is for Rev F which is green
 
 #define MICROPY_HW_LED_TX   PIN_PA27

@@ -93,10 +93,7 @@ mp_obj_t mod_network_find_nic(const uint8_t *ip) {
         return nic;
     }
 
-    // XXX temporary fix
-    //nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "no available NIC"));
-    mp_raise_OSError(MP_EIO);
-    // /XXX
+    nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, translate("no available NIC")));
 }
 
 STATIC mp_obj_t network_route(void) {
@@ -153,7 +150,7 @@ mp_obj_t mod_network_nic_ifconfig(struct netif *netif, size_t n_args, const mp_o
         uint32_t start = mp_hal_ticks_ms();
         while (!dhcp_supplied_address(netif)) {
             if (mp_hal_ticks_ms() - start > 10000) {
-                mp_raise_msg(&mp_type_OSError, "timeout waiting for DHCP to get IP address");
+                mp_raise_msg(&mp_type_OSError, translate("timeout waiting for DHCP to get IP address"));
             }
             mp_hal_delay_ms(100);
         }

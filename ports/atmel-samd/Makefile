@@ -7,6 +7,7 @@ else
   endif
 endif
 
+INC += -Ilwip_inc
 
 # If the build directory is not given, make it reflect the board name.
 BUILD ?= build-$(BOARD)
@@ -121,8 +122,11 @@ else
   CFLAGS += -flto
 endif
 
-CFLAGS += $(INC) -Wall -Werror -std=gnu11 -nostdlib $(BASE_CFLAGS) $(CFLAGS_MOD) $(COPT)
+#CFLAGS += $(INC) -Wall -Werror -std=gnu11 -nostdlib $(BASE_CFLAGS) $(CFLAGS_MOD) $(COPT)
 
+# XXX removed -Werror for the moment
+CFLAGS += $(INC) -Wall -std=gnu11 -nostdlib $(BASE_CFLAGS) $(CFLAGS_MOD) $(COPT)
+# /XXX
 
 ifeq ($(CHIP_FAMILY), samd21)
 CFLAGS += \
@@ -285,9 +289,18 @@ SRC_C = \
 	lib/mp-readline/readline.c \
 	$(BUILD)/autogen_usb_descriptor.c \
 	freetouch/adafruit_ptc.c \
-	supervisor/shared/memory.c \
-	modnetwork.c
+	supervisor/shared/memory.c
 
+ifeq ($(MICROPY_PY_NETWORK),1)
+CFLAGS += -DMICROPY_PY_NETWORK=1
+
+# XXX NOT PROUD OF THIS
+CFLAGS += -Wno-error=packed -Wno-error=attributes -Wno-error=strict-prototypes -Wno-error=sign-compare
+# /XXX 
+
+SRC_C += modnetwork.c
+INC += -Ilwip_inc
+endif
 
 # Choose which flash filesystem impl to use.
 # (Right now INTERNAL_FLASH_FILESYSTEM and SPI_FLASH_FILESYSTEM are mutually exclusive.
@@ -434,6 +447,7 @@ ifeq ($(INTERNAL_LIBM),1)
 OBJ += $(addprefix $(BUILD)/, $(SRC_LIBM:.c=.o))
 endif
 OBJ += $(addprefix $(BUILD)/, $(SRC_S:.s=.o))
+OBJ += $(addprefix $(BUILD)/, $(SRC_MOD:.c=.o))
 
 SRC_QSTR += $(SRC_C) $(SRC_SUPERVISOR) $(SRC_COMMON_HAL_EXPANDED) $(SRC_SHARED_MODULE_EXPANDED) $(STM_SRC_C)
 # Sources that only hold QSTRs after pre-processing.
