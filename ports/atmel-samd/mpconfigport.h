@@ -18,11 +18,6 @@ typedef long mp_off_t;
 
 #include "mpconfigboard.h"
 
-// XXX temporary
-#define MICROPY_PY_WIZNET5K (0)
-#define MICROPY_PY_CC3K (0)
-// /XXX
-
 // options to control how MicroPython is built
 #define MICROPY_QSTR_BYTES_IN_HASH  (1)
 #define MICROPY_ALLOC_PATH_MAX      (256)
@@ -87,6 +82,14 @@ typedef long mp_off_t;
 
 #ifndef MICROPY_PY_NETWORK
 #define MICROPY_PY_NETWORK          (0)
+#endif
+
+#ifndef MICROPY_PY_WIZNET5K
+#define MICROPY_PY_WIZNET5K         (0)
+#endif
+
+#ifndef MICROPY_PY_CC3K
+#define MICROPY_PY_CC3K             (0)
 #endif
 
 // fatfs configuration used in ffconf.h

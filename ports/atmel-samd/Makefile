@@ -63,17 +63,14 @@ BASE_CFLAGS = \
 	-fno-strict-aliasing \
 	-Wdouble-promotion \
 	-Wno-endif-labels \
-	-Wstrict-prototypes \
 	-Werror-implicit-function-declaration \
 	-Wpointer-arith \
 	-Wfloat-equal \
 	-Wundef \
 	-Wshadow \
 	-Wwrite-strings \
-	-Wsign-compare \
 	-Wmissing-format-attribute \
 	-Wno-deprecated-declarations \
-	-Wpacked \
 	-Wnested-externs \
 	-Wunreachable-code \
 	-Wcast-align \
@@ -87,6 +84,7 @@ BASE_CFLAGS = \
 	-DCIRCUITPY_SAFE_RESTART_WORD=0xDEADBEEF \
 	--param max-inline-insns-single=500
 
+# XXX temporarily removed -Wstrict-prototypes -Wsign-compare -Wpacked
 
 # NDEBUG disables assert() statements. This reduces code size pretty dramatically, per tannewt.
 
@@ -294,12 +292,19 @@ SRC_C = \
 ifeq ($(MICROPY_PY_NETWORK),1)
 CFLAGS += -DMICROPY_PY_NETWORK=1
 
-# XXX NOT PROUD OF THIS
-CFLAGS += -Wno-error=packed -Wno-error=attributes -Wno-error=strict-prototypes -Wno-error=sign-compare
-# /XXX 
-
 SRC_C += modnetwork.c
 INC += -Ilwip_inc
+
+ifeq ($(MICROPY_PY_WIZNET5K),1)
+CFLAGS += -DMICROPY_PY_WIZNET5K=1
+ifeq ($(MICROPY_PY_LWIP),0)
+SRC_C += modnwwiznet5k.c
+endif
+ifeq ($(MICROPY_PY_LWIP),1)
+SRC_C += network_wiznet5k.c
+endif
+endif
+
 endif
 
 # Choose which flash filesystem impl to use.
