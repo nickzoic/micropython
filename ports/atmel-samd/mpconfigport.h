@@ -3,6 +3,17 @@
 #ifndef __INCLUDED_MPCONFIGPORT_H
 #define __INCLUDED_MPCONFIGPORT_H
 
+// This port is intended to be 32-bit, but unfortunately, int32_t for
+// different targets may be defined in different ways - either as int
+// or as long. This requires different printf formatting specifiers
+// to print such value. So, we avoid int32_t and use int directly.
+#define UINT_FMT "%u"
+#define INT_FMT "%d"
+typedef int mp_int_t; // must be pointer size
+typedef unsigned mp_uint_t; // must be pointer size
+
+typedef long mp_off_t;
+
 #define MICROPY_OBJ_REPR            (MICROPY_OBJ_REPR_C)
 
 #include "mpconfigboard.h"
@@ -124,16 +135,8 @@
 #define MICROPY_MAX_STACK_USAGE       (1)
 #endif
 
-// This port is intended to be 32-bit, but unfortunately, int32_t for
-// different targets may be defined in different ways - either as int
-// or as long. This requires different printf formatting specifiers
-// to print such value. So, we avoid int32_t and use int directly.
-#define UINT_FMT "%u"
-#define INT_FMT "%d"
-typedef int mp_int_t; // must be pointer size
-typedef unsigned mp_uint_t; // must be pointer size
-
-typedef long mp_off_t;
+// XXX check we don't need this
+#define MICROPY_THREAD_YIELD()
 
 #define MP_PLAT_PRINT_STRN(str, len) mp_hal_stdout_tx_strn_cooked(str, len)
 
@@ -207,6 +210,7 @@ extern const struct _mp_obj_module_t gamepad_module;
 extern const struct _mp_obj_module_t stage_module;
 extern const struct _mp_obj_module_t touchio_module;
 extern const struct _mp_obj_module_t usb_hid_module;
+extern const struct _mp_obj_module_t mp_module_network;
 
 // Internal flash size dependent settings.
 #if BOARD_FLASH_SIZE > 192000
@@ -246,12 +250,19 @@ extern const struct _mp_obj_module_t usb_hid_module;
         #define I2CSLAVE_MODULE
     #endif
 
+    #if MICROPY_PY_NETWORK
+        #define NETWORK_MODULE { MP_OBJ_NEW_QSTR(MP_QSTR_network), (mp_obj_t)&mp_module_network },
+    #else
+        #define NETWORK_MODULE
+    #endif
+
     #ifndef EXTRA_BUILTIN_MODULES
     #define EXTRA_BUILTIN_MODULES \
         AUDIOIO_MODULE \
         AUDIOBUSIO_MODULE \
         { MP_OBJ_NEW_QSTR(MP_QSTR_bitbangio), (mp_obj_t)&bitbangio_module }, \
         I2CSLAVE_MODULE \
+        NETWORK_MODULE \
         { MP_OBJ_NEW_QSTR(MP_QSTR_rotaryio), (mp_obj_t)&rotaryio_module }, \
         { MP_OBJ_NEW_QSTR(MP_QSTR_gamepad),(mp_obj_t)&gamepad_module }
     #endif
@@ -351,6 +362,12 @@ extern const struct _mp_obj_module_t usb_hid_module;
 
 #include "peripherals/samd/dma.h"
 
+#if MICROPY_PY_NETWORK
+    #define NETWORK_ROOT_POINTERS mp_obj_list_t mod_network_nic_list;
+#else
+    #define NETWORK_ROOT_POINTERS
+#endif
+
 #define MICROPY_PORT_ROOT_POINTERS \
     const char *readline_hist[8]; \
     vstr_t *repl_line; \
@@ -358,6 +375,7 @@ extern const struct _mp_obj_module_t usb_hid_module;
     mp_obj_t rtc_time_source; \
     FLASH_ROOT_POINTERS \
     mp_obj_t gamepad_singleton; \
+    NETWORK_ROOT_POINTERS \
 
 void run_background_tasks(void);
 #define MICROPY_VM_HOOK_LOOP run_background_tasks();
