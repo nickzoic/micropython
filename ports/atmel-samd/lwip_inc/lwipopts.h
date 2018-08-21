@@ -1,5 +1,5 @@
-#ifndef MICROPY_INCLUDED_STM32_LWIP_LWIPOPTS_H
-#define MICROPY_INCLUDED_STM32_LWIP_LWIPOPTS_H
+#ifndef MICROPY_INCLUDED_ATMEL_SAMD_LWIP_LWIPOPTS_H
+#define MICROPY_INCLUDED_ATMEL_SAMD_LWIP_LWIPOPTS_H
 
 #include <stdint.h>
 
@@ -58,4 +58,4 @@ extern uint32_t shared_modules_random_getrandbits(uint8_t);
 
 typedef uint32_t sys_prot_t;
 
-#endif // MICROPY_INCLUDED_STM32_LWIP_LWIPOPTS_H
+#endif // MICROPY_INCLUDED_ATMEL_SAMD_LWIP_LWIPOPTS_H
