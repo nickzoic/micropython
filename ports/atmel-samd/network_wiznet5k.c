@@ -27,7 +27,7 @@
 #include <stdio.h>
 #include "py/runtime.h"
 #include "py/mphal.h"
-#include "spi.h"
+//#include "spi.h"
 #include "modnetwork.h"
 
 #if MICROPY_PY_WIZNET5K && MICROPY_PY_LWIP
@@ -44,9 +44,9 @@
 typedef struct _wiznet5k_obj_t {
     mod_network_nic_type_t base;
     mp_uint_t cris_state;
-    const spi_t *spi;
-    mp_hal_pin_obj_t cs;
-    mp_hal_pin_obj_t rst;
+    //const spi_t *spi;
+    //mp_hal_pin_obj_t cs;
+    //mp_hal_pin_obj_t rst;
     uint8_t eth_frame[1514];
     struct netif netif;
     struct dhcp dhcp_struct;
@@ -67,47 +67,47 @@ STATIC void wiz_cris_exit(void) {
 }
 
 STATIC void wiz_cs_select(void) {
-    mp_hal_pin_low(wiznet5k_obj.cs);
+    //mp_hal_pin_low(wiznet5k_obj.cs);
 }
 
 STATIC void wiz_cs_deselect(void) {
-    mp_hal_pin_high(wiznet5k_obj.cs);
+    //mp_hal_pin_high(wiznet5k_obj.cs);
 }
 
 STATIC void wiz_spi_read(uint8_t *buf, uint32_t len) {
-    HAL_StatusTypeDef status = HAL_SPI_Receive(wiznet5k_obj.spi->spi, buf, len, 5000);
-    (void)status;
+    //HAL_StatusTypeDef status = HAL_SPI_Receive(wiznet5k_obj.spi->spi, buf, len, 5000);
+    //(void)status;
 }
 
 STATIC void wiz_spi_write(const uint8_t *buf, uint32_t len) {
-    HAL_StatusTypeDef status = HAL_SPI_Transmit(wiznet5k_obj.spi->spi, (uint8_t*)buf, len, 5000);
-    (void)status;
+    //HAL_StatusTypeDef status = HAL_SPI_Transmit(wiznet5k_obj.spi->spi, (uint8_t*)buf, len, 5000);
+    //(void)status;
 }
 
 STATIC void wiznet5k_init(void) {
     // SPI configuration
-    SPI_InitTypeDef *init = &wiznet5k_obj.spi->spi->Init;
-    init->Mode = SPI_MODE_MASTER;
-    init->Direction = SPI_DIRECTION_2LINES;
-    init->DataSize = SPI_DATASIZE_8BIT;
-    init->CLKPolarity = SPI_POLARITY_LOW; // clock is low when idle
-    init->CLKPhase = SPI_PHASE_1EDGE; // data latched on first edge, which is rising edge for low-idle
-    init->NSS = SPI_NSS_SOFT;
-    init->BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2; // clock freq = f_PCLK / this_prescale_value; Wiz820i can do up to 80MHz
-    init->FirstBit = SPI_FIRSTBIT_MSB;
-    init->TIMode = SPI_TIMODE_DISABLED;
-    init->CRCCalculation = SPI_CRCCALCULATION_DISABLED;
-    init->CRCPolynomial = 7; // unused
-    spi_init(wiznet5k_obj.spi, false);
+    //SPI_InitTypeDef *init = &wiznet5k_obj.spi->spi->Init;
+    //init->Mode = SPI_MODE_MASTER;
+    //init->Direction = SPI_DIRECTION_2LINES;
+    //init->DataSize = SPI_DATASIZE_8BIT;
+    //init->CLKPolarity = SPI_POLARITY_LOW; // clock is low when idle
+    //init->CLKPhase = SPI_PHASE_1EDGE; // data latched on first edge, which is rising edge for low-idle
+    //init->NSS = SPI_NSS_SOFT;
+    //init->BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2; // clock freq = f_PCLK / this_prescale_value; Wiz820i can do up to 80MHz
+    //init->FirstBit = SPI_FIRSTBIT_MSB;
+    //init->TIMode = SPI_TIMODE_DISABLED;
+    //init->CRCCalculation = SPI_CRCCALCULATION_DISABLED;
+    //init->CRCPolynomial = 7; // unused
+    //spi_init(wiznet5k_obj.spi, false);
 
-    mp_hal_pin_output(wiznet5k_obj.cs);
-    mp_hal_pin_output(wiznet5k_obj.rst);
+    //mp_hal_pin_output(wiznet5k_obj.cs);
+    //mp_hal_pin_output(wiznet5k_obj.rst);
 
     // Reset the chip
-    mp_hal_pin_low(wiznet5k_obj.rst);
-    mp_hal_delay_ms(1); // datasheet says 2us
-    mp_hal_pin_high(wiznet5k_obj.rst);
-    mp_hal_delay_ms(150); // datasheet says 150ms
+    //mp_hal_pin_low(wiznet5k_obj.rst);
+    //mp_hal_delay_ms(1); // datasheet says 2us
+    //mp_hal_pin_high(wiznet5k_obj.rst);
+    //mp_hal_delay_ms(150); // datasheet says 150ms
 
     // Set physical interface callbacks
     reg_wizchip_cris_cbfunc(wiz_cris_enter, wiz_cris_exit);
@@ -241,25 +241,25 @@ STATIC mp_obj_t wiznet5k_make_new(const mp_obj_type_t *type, size_t n_args, size
     // check arguments
     mp_arg_check_num(n_args, n_kw, 3, 3, false);
 
-    const spi_t *spi = spi_from_mp_obj(args[0]);
-    mp_hal_pin_obj_t cs = pin_find(args[1]);
-    mp_hal_pin_obj_t rst = pin_find(args[2]);
+    //const spi_t *spi = spi_from_mp_obj(args[0]);
+    //mp_hal_pin_obj_t cs = pin_find(args[1]);
+    //mp_hal_pin_obj_t rst = pin_find(args[2]);
 
     // Access the existing object, if it has been constructed with the same hardware interface
     if (wiznet5k_obj.base.base.type == &mod_network_nic_type_wiznet5k) {
-        if (!(wiznet5k_obj.spi == spi && wiznet5k_obj.cs == cs && wiznet5k_obj.rst == rst
-            && wiznet5k_obj.netif.flags != 0)) {
-            wiznet5k_deinit();
-        }
+        //if (!(wiznet5k_obj.spi == spi && wiznet5k_obj.cs == cs && wiznet5k_obj.rst == rst
+        //    && wiznet5k_obj.netif.flags != 0)) {
+        //    wiznet5k_deinit();
+        //}
     }
 
     // Init the wiznet5k object
     wiznet5k_obj.base.base.type = &mod_network_nic_type_wiznet5k;
     wiznet5k_obj.base.poll_callback = wiznet5k_lwip_poll;
     wiznet5k_obj.cris_state = 0;
-    wiznet5k_obj.spi = spi;
-    wiznet5k_obj.cs = cs;
-    wiznet5k_obj.rst = rst;
+    //wiznet5k_obj.spi = spi;
+    //wiznet5k_obj.cs = cs;
+    //wiznet5k_obj.rst = rst;
 
     // Return wiznet5k object
     return MP_OBJ_FROM_PTR(&wiznet5k_obj);
@@ -354,7 +354,7 @@ STATIC mp_obj_t wiznet5k_status(size_t n_args, const mp_obj_t *args) {
         }
     }
 
-    mp_raise_ValueError("unknown config param");
+    mp_raise_ValueError(translate("unknown config param"));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(wiznet5k_status_obj, 1, 2, wiznet5k_status);
 
@@ -364,7 +364,7 @@ STATIC mp_obj_t wiznet5k_config(size_t n_args, const mp_obj_t *args, mp_map_t *k
     if (kwargs->used == 0) {
         // Get config value
         if (n_args != 2) {
-            mp_raise_TypeError("must query one param");
+            mp_raise_TypeError(translate("must query one param"));
         }
 
         switch (mp_obj_str_get_qstr(args[1])) {
@@ -374,14 +374,14 @@ STATIC mp_obj_t wiznet5k_config(size_t n_args, const mp_obj_t *args, mp_map_t *k
                 return mp_obj_new_bytes(buf, 6);
             }
             default:
-                mp_raise_ValueError("unknown config param");
+                mp_raise_ValueError(translate("unknown config param"));
         }
     } else {
         // Set config value(s)
         if (n_args != 1) {
-            mp_raise_TypeError("can't specify pos and kw args");
+            mp_raise_TypeError(translate("can't specify pos and kw args"));
         }
-        mp_raise_ValueError("unknown config param");
+        mp_raise_ValueError(translate("unknown config param"));
     }
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(wiznet5k_config_obj, 1, wiznet5k_config);

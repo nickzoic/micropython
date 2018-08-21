@@ -135,6 +135,8 @@ typedef long mp_off_t;
 #define MICROPY_MAX_STACK_USAGE       (1)
 #endif
 
+// XXX check we don't need this
+#define MICROPY_THREAD_YIELD()
 
 #define MP_PLAT_PRINT_STRN(str, len) mp_hal_stdout_tx_strn_cooked(str, len)
 
