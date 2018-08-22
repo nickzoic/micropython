@@ -92,11 +92,14 @@ STATIC void wiz_spi_write(const uint8_t *buf, uint32_t len) {
 
 STATIC void wiznet5k_init(void) {
     // SPI configuration
-    
+
+    // XXX probably should check if the provided SPI is already configured, and
+    // if so skip configuration?
+
     common_hal_busio_spi_configure(wiznet5k_obj.spi,
-        12000000,  // BAUDRATE 12MHz
-        0, // LOW POLARITY
-        0, // FIRST PHASE TRANSITION
+        10000000,  // BAUDRATE 10MHz
+        1, // HIGH POLARITY
+        1, // SECOND PHASE TRANSITION
         8 // 8 BITS
     );
 
@@ -120,6 +123,9 @@ STATIC void wiznet5k_init(void) {
 
     // Seems we need a small delay after init
     mp_hal_delay_ms(250);
+
+    uint8_t mac_addr[6] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06};
+    setSHAR(mac_addr);
 
     // Hook the Wiznet into lwIP
     wiznet5k_lwip_init(&wiznet5k_obj);
