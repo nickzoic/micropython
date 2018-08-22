@@ -51,8 +51,8 @@
 #include "lwip/priv/tcp_priv.h"
 #endif
 
-#if 0 // print debugging info
-#define DEBUG_printf DEBUG_printf
+#if 1 // print debugging info
+#define DEBUG_printf printf
 #else // don't print debugging info
 #define DEBUG_printf(...) (void)0
 #endif

@@ -168,10 +168,11 @@ STATIC uint16_t wiznet5k_recv_ethernet(wiznet5k_obj_t *self) {
     int ret = WIZCHIP_EXPORT(recvfrom)(0, self->eth_frame, 1514, ip, &port);
     if (ret <= 0) {
         printf("wiznet5k_lwip_poll: fatal error len=%u ret=%d\n", len, ret);
-        netif_set_link_down(&self->netif);
-        netif_set_down(&self->netif);
+        // XXX netif_set_link_down(&self->netif);
+        // XXX netif_set_down(&self->netif);
         return 0;
     }
+    printf("YAY %u\n", ret);
 
     return ret;
 }
@@ -199,8 +200,9 @@ STATIC err_t wiznet5k_netif_init(struct netif *netif) {
         return ERR_IF;
     }
 
+    // XXX
     // Enable MAC filtering so we only get frames destined for us, to reduce load on lwIP
-    setSn_MR(0, getSn_MR(0) | Sn_MR_MFEN);
+    //setSn_MR(0, getSn_MR(0) | Sn_MR_MFEN);
 
     return ERR_OK;
 }
@@ -216,13 +218,13 @@ STATIC void wiznet5k_lwip_init(wiznet5k_obj_t *self) {
     self->netif.name[1] = '0';
     netif_set_default(&self->netif);
     dns_setserver(0, &ipconfig[3]);
-    dhcp_set_struct(&self->netif, &self->dhcp_struct);
+    // XXX dhcp_set_struct(&self->netif, &self->dhcp_struct);
     // Setting NETIF_FLAG_UP then clearing it is a workaround for dhcp_start and the
     // LWIP_DHCP_CHECK_LINK_UP option, so that the DHCP client schedules itself to
     // automatically start when the interface later goes up.
     self->netif.flags |= NETIF_FLAG_UP;
-    dhcp_start(&self->netif);
-    self->netif.flags &= ~NETIF_FLAG_UP;
+    // XXX dhcp_start(&self->netif);
+    // XXX self->netif.flags &= ~NETIF_FLAG_UP;
 }
 
 STATIC void wiznet5k_lwip_poll(void *self_in, struct netif *netif) {
@@ -232,11 +234,14 @@ STATIC void wiznet5k_lwip_poll(void *self_in, struct netif *netif) {
         struct pbuf *p = pbuf_alloc(PBUF_RAW, len, PBUF_POOL);
         if (p != NULL) {
             pbuf_take(p, self->eth_frame, len);
+            printf("HI %d\n", len);
             if (self->netif.input(p, &self->netif) != ERR_OK) {
                 pbuf_free(p);
             }
+        } else {
         }
     }
+    printf("NO\n");
 }
 
 /*******************************************************************************/
@@ -393,6 +398,14 @@ STATIC mp_obj_t wiznet5k_config(size_t n_args, const mp_obj_t *args, mp_map_t *k
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(wiznet5k_config_obj, 1, wiznet5k_config);
 
+STATIC mp_obj_t recv_ethernet_wrapper(mp_obj_t self_in) {
+    wiznet5k_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    uint16_t len = wiznet5k_recv_ethernet(self);
+    if (len <= 0) return mp_const_none;
+    return mp_obj_new_bytes(self->eth_frame, len);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(recv_ethernet_obj, recv_ethernet_wrapper);
+
 STATIC mp_obj_t send_ethernet_wrapper(mp_obj_t self_in, mp_obj_t buf_in) {
     wiznet5k_obj_t *self = MP_OBJ_TO_PTR(self_in);
     mp_buffer_info_t buf;
@@ -410,6 +423,7 @@ STATIC const mp_rom_map_elem_t wiznet5k_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_status), MP_ROM_PTR(&wiznet5k_status_obj) },
     { MP_ROM_QSTR(MP_QSTR_config), MP_ROM_PTR(&wiznet5k_config_obj) },
 
+    { MP_ROM_QSTR(MP_QSTR_recv_ethernet), MP_ROM_PTR(&recv_ethernet_obj) },
     { MP_ROM_QSTR(MP_QSTR_send_ethernet), MP_ROM_PTR(&send_ethernet_obj) },
 };
 STATIC MP_DEFINE_CONST_DICT(wiznet5k_locals_dict, wiznet5k_locals_dict_table);

@@ -24,6 +24,8 @@
  * THE SOFTWARE.
  */
 
+#include <stdio.h>
+
 #include "shared-bindings/busio/SPI.h"
 #include "py/mperrno.h"
 #include "py/runtime.h"
@@ -282,6 +284,7 @@ bool common_hal_busio_spi_read(busio_spi_obj_t *self,
 
         status = spi_io->read(spi_io, data, len);
     }
+    printf("READ %d %ld\n", len, status);
     return status >= 0; // Status is number of chars read or an error code < 0.
 }
 

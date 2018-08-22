@@ -147,6 +147,7 @@ STATIC void wiznet5k_socket_close(mod_network_socket_obj_t *socket) {
 STATIC int wiznet5k_socket_bind(mod_network_socket_obj_t *socket, byte *ip, mp_uint_t port, int *_errno) {
     // open the socket in server mode (if port != 0)
     mp_int_t ret = WIZCHIP_EXPORT(socket)(socket->u_param.fileno, socket->u_param.type, port, 0);
+    printf("W5KSB: %d\n", ret);
     if (ret < 0) {
         wiznet5k_socket_close(socket);
         *_errno = -ret;
@@ -213,6 +214,8 @@ STATIC int wiznet5k_socket_connect(mod_network_socket_obj_t *socket, byte *ip, m
     MP_THREAD_GIL_EXIT();
     mp_int_t ret = WIZCHIP_EXPORT(connect)(socket->u_param.fileno, ip, port);
     MP_THREAD_GIL_ENTER();
+
+    printf("W5KSC: %d\n", ret);
 
     if (ret < 0) {
         wiznet5k_socket_close(socket);
@@ -356,7 +359,7 @@ STATIC mp_obj_t wiznet5k_make_new(const mp_obj_type_t *type, size_t n_args, size
     // if so skip configuration?
 
     common_hal_busio_spi_configure(wiznet5k_obj.spi,
-        10000000,  // BAUDRATE 10MHz
+        1000000,  // BAUDRATE 1MHz
         1, // HIGH POLARITY
         1, // SECOND PHASE TRANSITION
         8 // 8 BITS

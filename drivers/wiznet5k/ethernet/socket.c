@@ -50,6 +50,7 @@
 //
 //*****************************************************************************
 
+#include <stdio.h>
 #include <string.h>
 
 #include "py/mpthread.h"
@@ -160,7 +161,10 @@ int8_t WIZCHIP_EXPORT(socket)(uint8_t sn, uint8_t protocol, uint16_t port, uint8
    sock_is_sending &= ~(1<<sn);
    sock_remained_size[sn] = 0;
    sock_pack_info[sn] = 0;
-   while(getSn_SR(sn) == SOCK_CLOSED);
+   while(getSn_SR(sn) == SOCK_CLOSED) {
+       printf("... %d %x\n", sn, getSn_SR(sn));
+   }
+   printf("hello %d %x\n", sn, getSn_SR(sn));
    return (int8_t)sn;
 }	   
 
@@ -201,9 +205,11 @@ int8_t WIZCHIP_EXPORT(listen)(uint8_t sn)
 
 int8_t WIZCHIP_EXPORT(connect)(uint8_t sn, uint8_t * addr, uint16_t port)
 {
+   printf("wot? %d %d %d %d\n", sn, port, getSn_MR(sn), getSn_SR(sn));
    CHECK_SOCKNUM();
    CHECK_SOCKMODE(Sn_MR_TCP);
    CHECK_SOCKINIT();
+   printf("hmmmm\n");
    //M20140501 : For avoiding fatal error on memory align mismatched
    //if( *((uint32_t*)addr) == 0xFFFFFFFF || *((uint32_t*)addr) == 0) return SOCKERR_IPINVALID;
    {
