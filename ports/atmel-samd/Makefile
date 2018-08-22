@@ -69,6 +69,7 @@ BASE_CFLAGS = \
 	-Wundef \
 	-Wshadow \
 	-Wwrite-strings \
+	-Wsign-compare \
 	-Wmissing-format-attribute \
 	-Wno-deprecated-declarations \
 	-Wnested-externs \
@@ -84,7 +85,7 @@ BASE_CFLAGS = \
 	-DCIRCUITPY_SAFE_RESTART_WORD=0xDEADBEEF \
 	--param max-inline-insns-single=500
 
-# XXX temporarily removed -Wstrict-prototypes -Wsign-compare -Wpacked
+# XXX temporarily removed -Wstrict-prototypes -Wpacked
 
 # NDEBUG disables assert() statements. This reduces code size pretty dramatically, per tannewt.
 

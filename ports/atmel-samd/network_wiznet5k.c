@@ -143,7 +143,7 @@ STATIC void wiznet5k_get_mac_address(wiznet5k_obj_t *self, uint8_t mac[6]) {
 STATIC void wiznet5k_send_ethernet(wiznet5k_obj_t *self, size_t len, const uint8_t *buf) {
     uint8_t ip[4] = {1, 1, 1, 1}; // dummy
     int ret = WIZCHIP_EXPORT(sendto)(0, (byte*)buf, len, ip, 11); // dummy port
-    if (ret != len) {
+    if (ret != (int)len) {
         printf("wiznet5k_send_ethernet: fatal error %d\n", ret);
         netif_set_link_down(&self->netif);
         netif_set_down(&self->netif);
