@@ -124,7 +124,13 @@ STATIC void wiznet5k_init(void) {
     // Seems we need a small delay after init
     mp_hal_delay_ms(250);
 
-    uint8_t mac_addr[6] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06};
+    // Default MAC to a random locally administered unicast address
+    uint32_t rb1 = shared_modules_random_getrandbits(24);
+    uint32_t rb2 = shared_modules_random_getrandbits(24);
+    uint8_t mac_addr[6] = {
+        ((uint8_t)(rb1 >> 16) & 0x7F) | 0x03, (uint8_t)(rb1 >> 8), (uint8_t)(rb1),
+        (uint8_t)(rb2 >> 16), (uint8_t)(rb2 >> 8), (uint8_t)(rb2)
+    };
     setSHAR(mac_addr);
 
     // Hook the Wiznet into lwIP
@@ -207,13 +213,13 @@ STATIC err_t wiznet5k_netif_init(struct netif *netif) {
 
 STATIC void wiznet5k_lwip_init(wiznet5k_obj_t *self) {
     ip_addr_t ipconfig[4];
+    self->netif.name[0] = 'e';
+    self->netif.name[1] = '0';
     ipconfig[0].addr = 0;
     ipconfig[1].addr = 0;
     ipconfig[2].addr = 0;
     ipconfig[3].addr = 0;
     netif_add(&self->netif, &ipconfig[0], &ipconfig[1], &ipconfig[2], self, wiznet5k_netif_init, ethernet_input);
-    self->netif.name[0] = 'e';
-    self->netif.name[1] = '0';
     netif_set_default(&self->netif);
     dns_setserver(0, &ipconfig[3]);
     dhcp_set_struct(&self->netif, &self->dhcp_struct);
@@ -223,6 +229,8 @@ STATIC void wiznet5k_lwip_init(wiznet5k_obj_t *self) {
     self->netif.flags |= NETIF_FLAG_UP;
     dhcp_start(&self->netif);
     self->netif.flags &= ~NETIF_FLAG_UP;
+    netif_set_link_up(&self->netif);
+    netif_set_up(&self->netif);
 }
 
 STATIC void wiznet5k_lwip_poll(void *self_in, struct netif *netif) {
@@ -235,6 +243,7 @@ STATIC void wiznet5k_lwip_poll(void *self_in, struct netif *netif) {
             if (self->netif.input(p, &self->netif) != ERR_OK) {
                 pbuf_free(p);
             }
+        } else {
         }
     }
 }
@@ -393,6 +402,14 @@ STATIC mp_obj_t wiznet5k_config(size_t n_args, const mp_obj_t *args, mp_map_t *k
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(wiznet5k_config_obj, 1, wiznet5k_config);
 
+STATIC mp_obj_t recv_ethernet_wrapper(mp_obj_t self_in) {
+    wiznet5k_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    uint16_t len = wiznet5k_recv_ethernet(self);
+    if (len <= 0) return mp_const_none;
+    return mp_obj_new_bytes(self->eth_frame, len);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(recv_ethernet_obj, recv_ethernet_wrapper);
+
 STATIC mp_obj_t send_ethernet_wrapper(mp_obj_t self_in, mp_obj_t buf_in) {
     wiznet5k_obj_t *self = MP_OBJ_TO_PTR(self_in);
     mp_buffer_info_t buf;
@@ -410,6 +427,7 @@ STATIC const mp_rom_map_elem_t wiznet5k_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_status), MP_ROM_PTR(&wiznet5k_status_obj) },
     { MP_ROM_QSTR(MP_QSTR_config), MP_ROM_PTR(&wiznet5k_config_obj) },
 
+    { MP_ROM_QSTR(MP_QSTR_recv_ethernet), MP_ROM_PTR(&recv_ethernet_obj) },
     { MP_ROM_QSTR(MP_QSTR_send_ethernet), MP_ROM_PTR(&send_ethernet_obj) },
 };
 STATIC MP_DEFINE_CONST_DICT(wiznet5k_locals_dict, wiznet5k_locals_dict_table);

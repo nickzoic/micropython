@@ -308,13 +308,17 @@ SRC_C += modnetwork.c
 
 ifeq ($(MICROPY_PY_LWIP),1)
 INC := -Ilwip_inc $(INC)
+CFLAGS_MOD += -DMICROPY_PY_USOCKET=0
+else
+SRC_MOD += lib/netutils/netutils.c modusocket.c
+CFLAGS_MOD += -DMICROPY_PY_USOCKET=1
 endif
 
 ifneq ($(MICROPY_PY_WIZNET5K),0)
 WIZNET5K_DIR=drivers/wiznet5k
 INC += -I$(TOP)/$(WIZNET5K_DIR)
 CFLAGS_MOD += -DMICROPY_PY_WIZNET5K=$(MICROPY_PY_WIZNET5K) -D_WIZCHIP_=$(MICROPY_PY_WIZNET5K)
-SRC_MOD += network_wiznet5k.c # modnwwiznet5k.c
+SRC_MOD += network_wiznet5k.c modnwwiznet5k.c
 SRC_MOD += $(addprefix $(WIZNET5K_DIR)/,\
         ethernet/w$(MICROPY_PY_WIZNET5K)/w$(MICROPY_PY_WIZNET5K).c \
         ethernet/wizchip_conf.c \

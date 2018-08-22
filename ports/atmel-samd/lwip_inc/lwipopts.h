@@ -3,6 +3,16 @@
 
 #include <stdint.h>
 
+#define LWIP_DEBUG 0
+
+#if LWIP_DEBUG
+#define ETHARP_DEBUG LWIP_DBG_ON
+#define NETIF_DEBUG LWIP_DBG_ON
+#define RAW_DEBUG LWIP_DBG_ON
+#define LWIP_DBG_MIN_LEVEL LWIP_DBG_LEVEL_ALL
+#define LWIP_DBG_TYPES_ON (LWIP_DBG_TRACE | LWIP_DBG_STATE)
+#endif
+
 #define NO_SYS                          1
 #define SYS_LIGHTWEIGHT_PROT            1
 #define MEM_ALIGNMENT                   4

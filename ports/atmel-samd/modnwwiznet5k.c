@@ -35,8 +35,10 @@
 #include "py/mphal.h"
 #include "lib/netutils/netutils.h"
 #include "modnetwork.h"
-#include "pin.h"
-#include "spi.h"
+
+#include "shared-bindings/digitalio/DigitalInOut.h"
+#include "shared-bindings/digitalio/DriveMode.h"
+#include "shared-bindings/busio/SPI.h"
 
 #if MICROPY_PY_WIZNET5K && !MICROPY_PY_LWIP
 
@@ -49,9 +51,9 @@
 typedef struct _wiznet5k_obj_t {
     mp_obj_base_t base;
     mp_uint_t cris_state;
-    const spi_t *spi;
-    const pin_obj_t *cs;
-    const pin_obj_t *rst;
+    busio_spi_obj_t *spi;
+    digitalio_digitalinout_obj_t cs;
+    digitalio_digitalinout_obj_t rst;
     uint8_t socket_used;
 } wiznet5k_obj_t;
 
@@ -66,21 +68,19 @@ STATIC void wiz_cris_exit(void) {
 }
 
 STATIC void wiz_cs_select(void) {
-    mp_hal_pin_low(wiznet5k_obj.cs);
+    common_hal_digitalio_digitalinout_set_value(&wiznet5k_obj.cs, 0);
 }
 
 STATIC void wiz_cs_deselect(void) {
-    mp_hal_pin_high(wiznet5k_obj.cs);
+    common_hal_digitalio_digitalinout_set_value(&wiznet5k_obj.cs, 1);
 }
 
 STATIC void wiz_spi_read(uint8_t *buf, uint32_t len) {
-    HAL_StatusTypeDef status = HAL_SPI_Receive(wiznet5k_obj.spi->spi, buf, len, 5000);
-    (void)status;
+    (void)common_hal_busio_spi_read(wiznet5k_obj.spi, buf, len, 0);
 }
 
 STATIC void wiz_spi_write(const uint8_t *buf, uint32_t len) {
-    HAL_StatusTypeDef status = HAL_SPI_Transmit(wiznet5k_obj.spi->spi, (uint8_t*)buf, len, 5000);
-    (void)status;
+    (void)common_hal_busio_spi_write(wiznet5k_obj.spi, buf, len);
 }
 
 STATIC int wiznet5k_gethostbyname(mp_obj_t nic, const char *name, mp_uint_t len, uint8_t *out_ip) {
@@ -346,32 +346,28 @@ STATIC mp_obj_t wiznet5k_make_new(const mp_obj_type_t *type, size_t n_args, size
     // init the wiznet5k object
     wiznet5k_obj.base.type = (mp_obj_type_t*)&mod_network_nic_type_wiznet5k;
     wiznet5k_obj.cris_state = 0;
-    wiznet5k_obj.spi = spi_from_mp_obj(args[0]);
-    wiznet5k_obj.cs = pin_find(args[1]);
-    wiznet5k_obj.rst = pin_find(args[2]);
+    wiznet5k_obj.spi = MP_OBJ_TO_PTR(args[0]);
+    common_hal_digitalio_digitalinout_construct(&wiznet5k_obj.cs, args[1]);
+    common_hal_digitalio_digitalinout_construct(&wiznet5k_obj.rst, args[2]);
     wiznet5k_obj.socket_used = 0;
 
     /*!< SPI configuration */
-    SPI_InitTypeDef *init = &wiznet5k_obj.spi->spi->Init;
-    init->Mode = SPI_MODE_MASTER;
-    init->Direction = SPI_DIRECTION_2LINES;
-    init->DataSize = SPI_DATASIZE_8BIT;
-    init->CLKPolarity = SPI_POLARITY_LOW; // clock is low when idle
-    init->CLKPhase = SPI_PHASE_1EDGE; // data latched on first edge, which is rising edge for low-idle
-    init->NSS = SPI_NSS_SOFT;
-    init->BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2; // clock freq = f_PCLK / this_prescale_value; Wiz820i can do up to 80MHz
-    init->FirstBit = SPI_FIRSTBIT_MSB;
-    init->TIMode = SPI_TIMODE_DISABLED;
-    init->CRCCalculation = SPI_CRCCALCULATION_DISABLED;
-    init->CRCPolynomial = 7; // unused
-    spi_init(wiznet5k_obj.spi, false);
+    // XXX probably should check if the provided SPI is already configured, and
+    // if so skip configuration?
 
-    mp_hal_pin_output(wiznet5k_obj.cs);
-    mp_hal_pin_output(wiznet5k_obj.rst);
+    common_hal_busio_spi_configure(wiznet5k_obj.spi,
+        1000000,  // BAUDRATE 1MHz
+        1, // HIGH POLARITY
+        1, // SECOND PHASE TRANSITION
+        8 // 8 BITS
+    );
 
-    mp_hal_pin_low(wiznet5k_obj.rst);
+    common_hal_digitalio_digitalinout_switch_to_output(&wiznet5k_obj.cs, 1, DRIVE_MODE_PUSH_PULL);
+    common_hal_digitalio_digitalinout_switch_to_output(&wiznet5k_obj.rst, 1, DRIVE_MODE_PUSH_PULL); 
+
+    common_hal_digitalio_digitalinout_set_value(&wiznet5k_obj.rst, 0);
     mp_hal_delay_ms(1); // datasheet says 2us
-    mp_hal_pin_high(wiznet5k_obj.rst);
+    common_hal_digitalio_digitalinout_set_value(&wiznet5k_obj.rst, 1);
     mp_hal_delay_ms(160); // datasheet says 150ms
 
     reg_wizchip_cris_cbfunc(wiz_cris_enter, wiz_cris_exit);
@@ -501,5 +497,14 @@ const mod_network_nic_type_t mod_network_nic_type_wiznet5k = {
     .settimeout = wiznet5k_socket_settimeout,
     .ioctl = wiznet5k_socket_ioctl,
 };
+
+// XXX used by drivers/wiznet5k/internet/dns/dns.c
+// Doesn't really belong here
+
+#include "tick.h"
+
+uint32_t HAL_GetTick(void) {
+    return ticks_ms;
+}
 
 #endif // MICROPY_PY_WIZNET5K && !MICROPY_PY_LWIP
