@@ -211,6 +211,7 @@ extern const struct _mp_obj_module_t stage_module;
 extern const struct _mp_obj_module_t touchio_module;
 extern const struct _mp_obj_module_t usb_hid_module;
 extern const struct _mp_obj_module_t mp_module_network;
+extern const struct _mp_obj_module_t mp_module_usocket;
 
 // Internal flash size dependent settings.
 #if BOARD_FLASH_SIZE > 192000
@@ -256,6 +257,12 @@ extern const struct _mp_obj_module_t mp_module_network;
         #define NETWORK_MODULE
     #endif
 
+    #if MICROPY_PY_USOCKET
+        #define USOCKET_MODULE { MP_OBJ_NEW_QSTR(MP_QSTR_usocket), (mp_obj_t)&mp_module_usocket },
+    #else
+        #define USOCKET_MODULE
+    #endif
+
     #ifndef EXTRA_BUILTIN_MODULES
     #define EXTRA_BUILTIN_MODULES \
         AUDIOIO_MODULE \
@@ -263,6 +270,7 @@ extern const struct _mp_obj_module_t mp_module_network;
         { MP_OBJ_NEW_QSTR(MP_QSTR_bitbangio), (mp_obj_t)&bitbangio_module }, \
         I2CSLAVE_MODULE \
         NETWORK_MODULE \
+        USOCKET_MODULE \
         { MP_OBJ_NEW_QSTR(MP_QSTR_rotaryio), (mp_obj_t)&rotaryio_module }, \
         { MP_OBJ_NEW_QSTR(MP_QSTR_gamepad),(mp_obj_t)&gamepad_module }
     #endif

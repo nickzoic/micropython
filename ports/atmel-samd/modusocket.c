@@ -184,7 +184,7 @@ STATIC mp_obj_t socket_send(mp_obj_t self_in, mp_obj_t buf_in) {
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(buf_in, &bufinfo, MP_BUFFER_READ);
     int _errno;
-    mp_uint_t ret = self->nic_type->send(self, bufinfo.buf, bufinfo.len, &_errno);
+    mp_int_t ret = self->nic_type->send(self, bufinfo.buf, bufinfo.len, &_errno);
     if (ret == -1) {
         mp_raise_OSError(_errno);
     }
@@ -203,7 +203,7 @@ STATIC mp_obj_t socket_recv(mp_obj_t self_in, mp_obj_t len_in) {
     vstr_t vstr;
     vstr_init_len(&vstr, len);
     int _errno;
-    mp_uint_t ret = self->nic_type->recv(self, (byte*)vstr.buf, len, &_errno);
+    mp_int_t ret = self->nic_type->recv(self, (byte*)vstr.buf, len, &_errno);
     if (ret == -1) {
         mp_raise_OSError(_errno);
     }
@@ -420,7 +420,7 @@ STATIC mp_obj_t mod_usocket_getaddrinfo(mp_obj_t host_in, mp_obj_t port_in) {
     }
 
     if (!have_ip) {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "no available NIC"));
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, translate("no available NIC")));
     }
 
     mp_obj_tuple_t *tuple = MP_OBJ_TO_PTR(mp_obj_new_tuple(5, NULL));
