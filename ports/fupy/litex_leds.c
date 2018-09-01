@@ -22,16 +22,7 @@ typedef struct _litex_led_obj_t {
     int num;
 } litex_led_obj_t;
 
-STATIC litex_led_obj_t litex_leds[8] = {
-	{{&litex_led_type}, 1},
-	{{&litex_led_type}, 2},
-	{{&litex_led_type}, 3},
-	{{&litex_led_type}, 4},
-	{{&litex_led_type}, 5},
-	{{&litex_led_type}, 6},
-	{{&litex_led_type}, 7},
-	{{&litex_led_type}, 8}
-};
+STATIC litex_led_obj_t litex_leds[CAS_LEDS_COUNT] = {0};
 
 STATIC mp_obj_t litex_led_make_new(const mp_obj_type_t *type_in,
 		size_t n_args, size_t n_kw, const mp_obj_t *args) {
@@ -40,7 +31,9 @@ STATIC mp_obj_t litex_led_make_new(const mp_obj_type_t *type_in,
 	mp_uint_t led_num = mp_obj_get_int(args[0]);
 
 	switch (led_num) {
-	case 1 ... 8:
+	case 1 ... CAS_LEDS_COUNT:
+		litex_leds[led_num - 1].base.type = &litex_led_type;
+		litex_leds[led_num - 1].num = led_num;
 		return &litex_leds[led_num - 1];
 	default:
 		nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError,
