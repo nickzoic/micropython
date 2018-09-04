@@ -295,6 +295,7 @@ SRC_C += modnetwork.c
 
 ifeq ($(MICROPY_PY_LWIP),1)
 INC := -Ilwip_inc $(INC)
+CFLAGS_MOD += -DMICROPY_PY_USOCKET=0
 else
 SRC_MOD += lib/netutils/netutils.c modusocket.c
 CFLAGS_MOD += -DMICROPY_PY_USOCKET=1

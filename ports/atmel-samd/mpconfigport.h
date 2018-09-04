@@ -3,6 +3,7 @@
 #ifndef __INCLUDED_MPCONFIGPORT_H
 #define __INCLUDED_MPCONFIGPORT_H
 
+
 // This port is intended to be 32-bit, but unfortunately, int32_t for
 // different targets may be defined in different ways - either as int
 // or as long. This requires different printf formatting specifiers
@@ -386,8 +387,16 @@ extern const struct _mp_obj_module_t mp_module_usocket;
     NETWORK_ROOT_POINTERS \
 
 void run_background_tasks(void);
-#define MICROPY_VM_HOOK_LOOP run_background_tasks();
-#define MICROPY_VM_HOOK_RETURN run_background_tasks();
+
+#if MICROPY_PY_NETWORK && MICROPY_PY_LWIP
+    extern void pyb_lwip_poll(void);
+    #define MICROPY_VM_HOOK_LOOP run_background_tasks(); pyb_lwip_poll();
+    #define MICROPY_VM_HOOK_RETURN run_background_tasks(); pyb_lwip_poll();
+#else
+    #define MICROPY_VM_HOOK_LOOP run_background_tasks();
+    #define MICROPY_VM_HOOK_RETURN run_background_tasks();
+#endif
+
 
 #define CIRCUITPY_AUTORELOAD_DELAY_MS 500
 #define CIRCUITPY_BOOT_OUTPUT_FILE "/boot_out.txt"

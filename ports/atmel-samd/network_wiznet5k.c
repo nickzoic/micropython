@@ -124,7 +124,13 @@ STATIC void wiznet5k_init(void) {
     // Seems we need a small delay after init
     mp_hal_delay_ms(250);
 
-    uint8_t mac_addr[6] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06};
+    // Default MAC to a random locally administered unicast address
+    uint32_t rb1 = shared_modules_random_getrandbits(24);
+    uint32_t rb2 = shared_modules_random_getrandbits(24);
+    uint8_t mac_addr[6] = {
+        ((uint8_t)(rb1 >> 16) & 0x7F) | 0x03, (uint8_t)(rb1 >> 8), (uint8_t)(rb1),
+        (uint8_t)(rb2 >> 16), (uint8_t)(rb2 >> 8), (uint8_t)(rb2)
+    };
     setSHAR(mac_addr);
 
     // Hook the Wiznet into lwIP
@@ -168,11 +174,10 @@ STATIC uint16_t wiznet5k_recv_ethernet(wiznet5k_obj_t *self) {
     int ret = WIZCHIP_EXPORT(recvfrom)(0, self->eth_frame, 1514, ip, &port);
     if (ret <= 0) {
         printf("wiznet5k_lwip_poll: fatal error len=%u ret=%d\n", len, ret);
-        // XXX netif_set_link_down(&self->netif);
-        // XXX netif_set_down(&self->netif);
+        netif_set_link_down(&self->netif);
+        netif_set_down(&self->netif);
         return 0;
     }
-    printf("YAY %u\n", ret);
 
     return ret;
 }
@@ -200,31 +205,32 @@ STATIC err_t wiznet5k_netif_init(struct netif *netif) {
         return ERR_IF;
     }
 
-    // XXX
     // Enable MAC filtering so we only get frames destined for us, to reduce load on lwIP
-    //setSn_MR(0, getSn_MR(0) | Sn_MR_MFEN);
+    setSn_MR(0, getSn_MR(0) | Sn_MR_MFEN);
 
     return ERR_OK;
 }
 
 STATIC void wiznet5k_lwip_init(wiznet5k_obj_t *self) {
     ip_addr_t ipconfig[4];
+    self->netif.name[0] = 'e';
+    self->netif.name[1] = '0';
     ipconfig[0].addr = 0;
     ipconfig[1].addr = 0;
     ipconfig[2].addr = 0;
     ipconfig[3].addr = 0;
     netif_add(&self->netif, &ipconfig[0], &ipconfig[1], &ipconfig[2], self, wiznet5k_netif_init, ethernet_input);
-    self->netif.name[0] = 'e';
-    self->netif.name[1] = '0';
     netif_set_default(&self->netif);
     dns_setserver(0, &ipconfig[3]);
-    // XXX dhcp_set_struct(&self->netif, &self->dhcp_struct);
+    dhcp_set_struct(&self->netif, &self->dhcp_struct);
     // Setting NETIF_FLAG_UP then clearing it is a workaround for dhcp_start and the
     // LWIP_DHCP_CHECK_LINK_UP option, so that the DHCP client schedules itself to
     // automatically start when the interface later goes up.
     self->netif.flags |= NETIF_FLAG_UP;
-    // XXX dhcp_start(&self->netif);
-    // XXX self->netif.flags &= ~NETIF_FLAG_UP;
+    dhcp_start(&self->netif);
+    self->netif.flags &= ~NETIF_FLAG_UP;
+    netif_set_link_up(&self->netif);
+    netif_set_up(&self->netif);
 }
 
 STATIC void wiznet5k_lwip_poll(void *self_in, struct netif *netif) {
@@ -234,14 +240,12 @@ STATIC void wiznet5k_lwip_poll(void *self_in, struct netif *netif) {
         struct pbuf *p = pbuf_alloc(PBUF_RAW, len, PBUF_POOL);
         if (p != NULL) {
             pbuf_take(p, self->eth_frame, len);
-            printf("HI %d\n", len);
             if (self->netif.input(p, &self->netif) != ERR_OK) {
                 pbuf_free(p);
             }
         } else {
         }
     }
-    printf("NO\n");
 }
 
 /*******************************************************************************/
