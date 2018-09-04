@@ -388,6 +388,10 @@ extern const struct _mp_obj_module_t mp_module_usocket;
 
 void run_background_tasks(void);
 
+#ifndef MICROPY_PY_LWIP
+#define MICROPY_PY_LWIP 0
+#endif
+
 #if MICROPY_PY_NETWORK && MICROPY_PY_LWIP
     extern void pyb_lwip_poll(void);
     #define MICROPY_VM_HOOK_LOOP run_background_tasks(); pyb_lwip_poll();

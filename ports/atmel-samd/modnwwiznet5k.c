@@ -356,7 +356,7 @@ STATIC mp_obj_t wiznet5k_make_new(const mp_obj_type_t *type, size_t n_args, size
     // if so skip configuration?
 
     common_hal_busio_spi_configure(wiznet5k_obj.spi,
-        1000000,  // BAUDRATE 1MHz
+        10000000,  // BAUDRATE 10MHz
         1, // HIGH POLARITY
         1, // SECOND PHASE TRANSITION
         8 // 8 BITS
