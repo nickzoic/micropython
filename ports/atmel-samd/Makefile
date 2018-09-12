@@ -1,4 +1,4 @@
-# Select the board to build for.
+
 ifeq ($(BOARD),)
   $(error You must provide a BOARD parameter)
 else
@@ -308,10 +308,10 @@ SRC_C += modnetwork.c
 
 ifeq ($(MICROPY_PY_LWIP),1)
 INC := -Ilwip_inc $(INC)
-CFLAGS_MOD += -DMICROPY_PY_USOCKET=0
+#CFLAGS_MOD += -DMICROPY_PY_USOCKET=0
 else
-SRC_MOD += lib/netutils/netutils.c modusocket.c
-CFLAGS_MOD += -DMICROPY_PY_USOCKET=1
+#SRC_MOD += lib/netutils/netutils.c modusocket.c
+#CFLAGS_MOD += -DMICROPY_PY_USOCKET=1
 endif
 
 ifneq ($(MICROPY_PY_WIZNET5K),0)
@@ -455,6 +455,10 @@ SRC_SHARED_MODULE = \
 	struct/__init__.c \
 	uheap/__init__.c \
 	ustack/__init__.c
+
+ifeq ($(MICROPY_PY_NETWORK),1)
+SRC_COMMON_HAL += socket/__init__.c
+endif
 
 # SAMRs don't have a DAC
 ifneq ($(CHIP_VARIANT),SAMR21G18A)
