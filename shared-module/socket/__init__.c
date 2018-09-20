@@ -37,55 +37,57 @@
  * THE SOFTWARE.
  */
 
-int common_hal_socket_construct(socket_obj_t *self, int family, int type, int proto, int fileno) {
+STATIC const mp_obj_type_t socket_obj_type;
+
+int shared_module_socket_construct(socket_obj_t *self, int family, int type, int proto, int fileno) {
     return -1;
 }
 
-int common_hal_socket_bind(socket_obj_t *self, uint8_t *ip, mp_uint_t port) {
+int shared_module_socket_bind(socket_obj_t *self, uint8_t *ip, mp_uint_t port) {
     return -1;
 }
 
-int common_hal_socket_listen(socket_obj_t *self, mp_uint_t backlog) {
+int shared_module_socket_listen(socket_obj_t *self, mp_uint_t backlog) {
     return -1;
 }
 
-int common_hal_socket_accept(socket_obj_t *self, socket_obj_t *socket2, uint8_t *ip, mp_uint_t *port) {
+int shared_module_socket_accept(socket_obj_t *self, socket_obj_t *socket2, uint8_t *ip, mp_uint_t *port) {
     return -1;
 }
 
-int common_hal_socket_connect(socket_obj_t *self, uint8_t *ip, mp_uint_t port) {
+int shared_module_socket_connect(socket_obj_t *self, uint8_t *ip, mp_uint_t port) {
     return -1;
 }
 
-int common_hal_socket_send(socket_obj_t *self, uint8_t *buf, size_t len) {
+int shared_module_socket_send(socket_obj_t *self, uint8_t *buf, size_t len) {
     return -1;
 }
 
-int common_hal_socket_recv(socket_obj_t *self, uint8_t *buf, size_t len) {
+int shared_module_socket_recv(socket_obj_t *self, uint8_t *buf, size_t len) {
     return -1;
 }
 
-int common_hal_socket_sendto(socket_obj_t *self, uint8_t *buf, size_t len, uint8_t *ip, mp_uint_t port) {
+int shared_module_socket_sendto(socket_obj_t *self, uint8_t *buf, size_t len, uint8_t *ip, mp_uint_t port) {
     return -1;
 }
 
-int common_hal_socket_recvfrom(socket_obj_t *self, uint8_t *buf, size_t len, uint8_t *ip, mp_uint_t *port) {
+int shared_module_socket_recvfrom(socket_obj_t *self, uint8_t *buf, size_t len, uint8_t *ip, mp_uint_t *port) {
     return -1;
 }
 
-int common_hal_socket_setsockopt(socket_obj_t *self, mp_int_t level, mp_int_t opt, const void *optval, mp_uint_t optlen) {
+int shared_module_socket_setsockopt(socket_obj_t *self, mp_int_t level, mp_int_t opt, const void *optval, mp_uint_t optlen) {
     return -1;
 }
 
-int common_hal_socket_settimeout(socket_obj_t *self, mp_int_t timeout) {
+int shared_module_socket_settimeout(socket_obj_t *self, mp_int_t timeout) {
     return -1;
 }
 
-int common_hal_socket_ioctl(socket_obj_t *self, mp_uint_t request, mp_int_t arg, mp_int_t *errcode) {
+int shared_module_socket_ioctl(socket_obj_t *self, mp_uint_t request, mp_int_t arg, mp_int_t *errcode) {
     return -1;
 }
 
 
-int common_hal_socket_getaddrinfo(const char *host, mp_uint_t port, uint8_t *buf, size_t len) {
+int shared_module_socket_getaddrinfo(const char *host, mp_uint_t port, uint8_t *buf, size_t len) {
     return -1;
 }

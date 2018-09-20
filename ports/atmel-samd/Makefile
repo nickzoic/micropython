@@ -457,7 +457,7 @@ SRC_SHARED_MODULE = \
 	ustack/__init__.c
 
 ifeq ($(MICROPY_PY_NETWORK),1)
-SRC_COMMON_HAL += socket/__init__.c
+SRC_SHARED_MODULE += socket/__init__.c
 endif
 
 # SAMRs don't have a DAC

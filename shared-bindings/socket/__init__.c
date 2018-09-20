@@ -48,14 +48,11 @@
 //| XXX TODO Write Docs.
 
 
-STATIC const mp_obj_type_t socket_obj_type;
-
 STATIC mp_obj_t socket_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 0, 4, false);
 
     // create socket object (not bound to any NIC yet)
     socket_obj_t *self = m_new_obj_with_finaliser(socket_obj_t);
-    self->base.type = &socket_obj_type;
 
     mp_int_t family, sock_type, fileno;
 
@@ -75,7 +72,7 @@ STATIC mp_obj_t socket_make_new(const mp_obj_type_t *type, size_t n_args, size_t
         family = MOD_NETWORK_AF_INET;
     }
 
-    int err = common_hal_socket_construct(self, family, sock_type, 0, fileno);
+    int err = shared_module_socket_construct(self, family, sock_type, 0, fileno);
     if (err) mp_raise_OSError(err);
 
     return MP_OBJ_FROM_PTR(self);
@@ -90,7 +87,7 @@ STATIC mp_obj_t socket_bind(mp_obj_t self_in, mp_obj_t addr_in) {
     uint8_t ip[MOD_NETWORK_IPADDR_BUF_SIZE];
     mp_uint_t port = netutils_parse_inet_addr(addr_in, ip, NETUTILS_BIG);
 
-    int err = common_hal_socket_bind(self, ip, port);
+    int err = shared_module_socket_bind(self, ip, port);
     if (err) mp_raise_OSError(err);
 
     return mp_const_none;
@@ -101,7 +98,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(socket_bind_obj, socket_bind);
 STATIC mp_obj_t socket_listen(mp_obj_t self_in, mp_obj_t backlog) {
     socket_obj_t *self = MP_OBJ_TO_PTR(self_in);
 
-    int err = common_hal_socket_listen(self, mp_obj_get_int(backlog));
+    int err = shared_module_socket_listen(self, mp_obj_get_int(backlog));
     if (err) mp_raise_OSError(err);
 
     return mp_const_none;
@@ -115,13 +112,12 @@ STATIC mp_obj_t socket_accept(mp_obj_t self_in) {
     // create new socket object
     // starts with empty NIC so that finaliser doesn't run close() method if accept() fails
     socket_obj_t *socket2 = m_new_obj_with_finaliser(socket_obj_t);
-    socket2->base.type = &socket_obj_type;
 
     // accept incoming connection
     uint8_t ip[MOD_NETWORK_IPADDR_BUF_SIZE];
     mp_uint_t port;
 
-    int err = common_hal_socket_accept(self, socket2, ip, &port);
+    int err = shared_module_socket_accept(self, socket2, ip, &port);
     if (err) mp_raise_OSError(err);
    
     // make the return value
@@ -143,7 +139,7 @@ STATIC mp_obj_t socket_connect(mp_obj_t self_in, mp_obj_t addr_in) {
 
     // call the NIC to connect the socket
 
-    int err = common_hal_socket_connect(self, ip, port);
+    int err = shared_module_socket_connect(self, ip, port);
     if (err) mp_raise_OSError(err);
 
     return mp_const_none;
@@ -156,7 +152,7 @@ STATIC mp_obj_t socket_send(mp_obj_t self_in, mp_obj_t buf_in) {
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(buf_in, &bufinfo, MP_BUFFER_READ);
 
-    int ret = common_hal_socket_send(self, bufinfo.buf, bufinfo.len);
+    int ret = shared_module_socket_send(self, bufinfo.buf, bufinfo.len);
     if (ret < 0) mp_raise_OSError(-ret);
 
     return mp_obj_new_int(ret);
@@ -170,7 +166,7 @@ STATIC mp_obj_t socket_recv(mp_obj_t self_in, mp_obj_t len_in) {
     vstr_t vstr;
     vstr_init_len(&vstr, len);
 
-    int ret = common_hal_socket_recv(self, (byte*)vstr.buf, len);
+    int ret = shared_module_socket_recv(self, (byte*)vstr.buf, len);
     if (ret < 0) mp_raise_OSError(-ret);
     if (ret == 0) return mp_const_empty_bytes;
 
@@ -191,7 +187,7 @@ STATIC mp_obj_t socket_sendto(mp_obj_t self_in, mp_obj_t data_in, mp_obj_t addr_
     uint8_t ip[MOD_NETWORK_IPADDR_BUF_SIZE];
     mp_uint_t port = netutils_parse_inet_addr(addr_in, ip, NETUTILS_BIG);
 
-    int ret = common_hal_socket_sendto(self, bufinfo.buf, bufinfo.len, ip, port);
+    int ret = shared_module_socket_sendto(self, bufinfo.buf, bufinfo.len, ip, port);
     if (ret < 0) mp_raise_OSError(-ret);
 
     return mp_obj_new_int(ret);
@@ -206,7 +202,7 @@ STATIC mp_obj_t socket_recvfrom(mp_obj_t self_in, mp_obj_t len_in) {
     byte ip[4];
     mp_uint_t port;
 
-    int ret = common_hal_socket_recvfrom(self, (byte*)vstr.buf, vstr.len, ip, &port);
+    int ret = shared_module_socket_recvfrom(self, (byte*)vstr.buf, vstr.len, ip, &port);
     if (ret < 0) mp_raise_OSError(-ret);
 
     mp_obj_t tuple[2];
@@ -242,7 +238,7 @@ STATIC mp_obj_t socket_setsockopt(size_t n_args, const mp_obj_t *args) {
         optlen = bufinfo.len;
     }
 
-    int err = common_hal_socket_setsockopt(self, level, opt, optval, optlen);
+    int err = shared_module_socket_setsockopt(self, level, opt, optval, optlen);
     if (err) mp_raise_OSError(err);
 
     return mp_const_none;
@@ -266,7 +262,7 @@ STATIC mp_obj_t socket_settimeout(mp_obj_t self_in, mp_obj_t timeout_in) {
         #endif
     }
 
-    int err = common_hal_socket_settimeout(self, timeout);
+    int err = shared_module_socket_settimeout(self, timeout);
     if (err) mp_raise_OSError(err);
 
     return mp_const_none;
@@ -276,7 +272,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(socket_settimeout_obj, socket_settimeout);
 // method socket.setblocking(flag)
 STATIC mp_obj_t socket_setblocking(mp_obj_t self_in, mp_obj_t blocking) {
     socket_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    int err = common_hal_socket_settimeout(self, mp_obj_is_true(blocking) ? -1 : 0);
+    int err = shared_module_socket_settimeout(self, mp_obj_is_true(blocking) ? -1 : 0);
     if (err) mp_raise_OSError(err);
 
     return mp_const_none;
@@ -303,7 +299,7 @@ STATIC MP_DEFINE_CONST_DICT(socket_locals_dict, socket_locals_dict_table);
 
 mp_uint_t socket_ioctl(mp_obj_t self_in, mp_uint_t request, uintptr_t arg, int *errcode) {
     socket_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    return common_hal_socket_ioctl(self, request, arg, errcode);
+    return shared_module_socket_ioctl(self, request, arg, errcode);
 }
 
 STATIC const mp_stream_p_t socket_stream_p = {
@@ -329,7 +325,7 @@ STATIC mp_obj_t mod_socket_getaddrinfo(mp_obj_t host_in, mp_obj_t port_in) {
     mp_int_t port = mp_obj_get_int(port_in);
     uint8_t out_ip[MOD_NETWORK_IPADDR_BUF_SIZE];
 
-    int err = common_hal_socket_getaddrinfo(host, port, out_ip, MOD_NETWORK_IPADDR_BUF_SIZE);
+    int err = shared_module_socket_getaddrinfo(host, port, out_ip, MOD_NETWORK_IPADDR_BUF_SIZE);
     if (err) mp_raise_OSError(err);
 
     mp_obj_tuple_t *tuple = MP_OBJ_TO_PTR(mp_obj_new_tuple(5, NULL));

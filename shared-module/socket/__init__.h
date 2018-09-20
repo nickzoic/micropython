@@ -24,12 +24,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef MICROPY_INCLUDED_SHARED_BINDINGS_SOCKET___INIT___H
-#define MICROPY_INCLUDED_SHARED_BINDINGS_SOCKET___INIT___H
-
-typedef struct {
-    mp_obj_base_t base;
-} socket_obj_t;
+#ifndef MICROPY_INCLUDED_SHARED_MODULE_SOCKET___INIT___H
+#define MICROPY_INCLUDED_SHARED_MODULE_SOCKET___INIT___H
 
 int shared_module_socket_construct(socket_obj_t *self, int family, int type, int proto, int fileno);
 int shared_module_socket_bind(socket_obj_t *self, uint8_t *ip, mp_uint_t port);
@@ -46,4 +42,4 @@ int shared_module_socket_ioctl(socket_obj_t *self, mp_uint_t request, mp_int_t a
 
 int shared_module_socket_getaddrinfo(const char *host, mp_uint_t port, uint8_t *buf, size_t len);
 
-#endif  // MICROPY_INCLUDED_SHARED_BINDINGS_SOCKET___INIT___H
+#endif  // MICROPY_INCLUDED_SHARED_MODULE_SOCKET___INIT___H
