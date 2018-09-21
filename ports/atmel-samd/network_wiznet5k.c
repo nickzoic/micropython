@@ -27,8 +27,8 @@
 #include <stdio.h>
 #include "py/runtime.h"
 #include "py/mphal.h"
-#include "modnetwork.h"
 
+#include "shared-bindings/network/__init__.h"
 #include "shared-bindings/digitalio/DigitalInOut.h"
 #include "shared-bindings/digitalio/DriveMode.h"
 #include "shared-bindings/busio/SPI.h"
