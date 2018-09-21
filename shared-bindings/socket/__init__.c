@@ -34,8 +34,8 @@
 #include "py/stream.h"
 #include "py/mperrno.h"
 #include "lib/netutils/netutils.h"
-#include "modnetwork.h"
 
+#include "shared-bindings/network/__init__.h"
 #include "shared-bindings/socket/__init__.h"
 
 //| :mod:`socket` --- TCP, UDP and RAW socket support
@@ -48,11 +48,14 @@
 //| XXX TODO Write Docs.
 
 
+STATIC const mp_obj_type_t socket_type;
+
 STATIC mp_obj_t socket_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 0, 4, false);
 
     // create socket object (not bound to any NIC yet)
     socket_obj_t *self = m_new_obj_with_finaliser(socket_obj_t);
+    self->base.type = &socket_type;
 
     mp_int_t family, sock_type, fileno;
 
@@ -112,6 +115,7 @@ STATIC mp_obj_t socket_accept(mp_obj_t self_in) {
     // create new socket object
     // starts with empty NIC so that finaliser doesn't run close() method if accept() fails
     socket_obj_t *socket2 = m_new_obj_with_finaliser(socket_obj_t);
+    socket2->base.type = &socket_type;
 
     // accept incoming connection
     uint8_t ip[MOD_NETWORK_IPADDR_BUF_SIZE];
@@ -307,7 +311,7 @@ STATIC const mp_stream_p_t socket_stream_p = {
     .is_text = false,
 };
 
-STATIC const mp_obj_type_t socket_obj_type = {
+STATIC const mp_obj_type_t socket_type = {
     { &mp_type_type },
     .name = MP_QSTR_socket,
     .make_new = socket_make_new,
@@ -341,7 +345,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(mod_socket_getaddrinfo_obj, mod_socket_getaddri
 STATIC const mp_rom_map_elem_t mp_module_socket_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_socket) },
 
-    { MP_ROM_QSTR(MP_QSTR_socket), MP_ROM_PTR(&socket_obj_type) },
+    { MP_ROM_QSTR(MP_QSTR_socket), MP_ROM_PTR(&socket_type) },
     { MP_ROM_QSTR(MP_QSTR_getaddrinfo), MP_ROM_PTR(&mod_socket_getaddrinfo_obj) },
 
     // class constants

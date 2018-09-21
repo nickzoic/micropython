@@ -27,9 +27,13 @@
 #ifndef MICROPY_INCLUDED_SHARED_BINDINGS_SOCKET___INIT___H
 #define MICROPY_INCLUDED_SHARED_BINDINGS_SOCKET___INIT___H
 
-typedef struct {
-    mp_obj_base_t base;
-} socket_obj_t;
+#include "shared-bindings/network/__init__.h"
+
+#if MICROPY_PY_LWIP
+typedef lwip_socket_obj_t socket_obj_t;
+#else
+typedef mod_network_socket_obj_t socket_obj_t;
+#endif
 
 int shared_module_socket_construct(socket_obj_t *self, int family, int type, int proto, int fileno);
 int shared_module_socket_bind(socket_obj_t *self, uint8_t *ip, mp_uint_t port);

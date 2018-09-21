@@ -7,8 +7,6 @@ else
   endif
 endif
 
-INC += -Ilwip_inc
-
 # If the build directory is not given, make it reflect the board name.
 BUILD ?= build-$(BOARD)
 
@@ -297,21 +295,10 @@ CFLAGS += -DMICROPY_PY_NETWORK=1
 CFLAGS += -Wno-error=packed -Wno-error=attributes -Wno-error=strict-prototypes -Wno-error=sign-compare
 # /XXX 
 
-SRC_C += modnetwork.c
-INC += -Ilwip_inc
-endif
-
-ifeq ($(MICROPY_PY_NETWORK),1)
-CFLAGS += -DMICROPY_PY_NETWORK=1
-
-SRC_C += modnetwork.c
-
 ifeq ($(MICROPY_PY_LWIP),1)
 INC := -Ilwip_inc $(INC)
-#CFLAGS_MOD += -DMICROPY_PY_USOCKET=0
-else
-#SRC_MOD += lib/netutils/netutils.c modusocket.c
-#CFLAGS_MOD += -DMICROPY_PY_USOCKET=1
+else 
+SRC_MOD += lib/netutils/netutils.c
 endif
 
 ifneq ($(MICROPY_PY_WIZNET5K),0)
@@ -457,7 +444,7 @@ SRC_SHARED_MODULE = \
 	ustack/__init__.c
 
 ifeq ($(MICROPY_PY_NETWORK),1)
-SRC_SHARED_MODULE += socket/__init__.c
+SRC_SHARED_MODULE += socket/__init__.c network/__init__.c
 endif
 
 # SAMRs don't have a DAC
