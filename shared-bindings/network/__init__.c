@@ -33,7 +33,8 @@
 #include "py/mphal.h"
 #include "py/mperrno.h"
 #include "lib/netutils/netutils.h"
-#include "modnetwork.h"
+
+#include "shared-bindings/network/__init__.h"
 
 #if MICROPY_PY_NETWORK
 
