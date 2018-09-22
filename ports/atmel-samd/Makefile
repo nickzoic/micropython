@@ -305,7 +305,7 @@ ifneq ($(MICROPY_PY_WIZNET5K),0)
 WIZNET5K_DIR=drivers/wiznet5k
 INC += -I$(TOP)/$(WIZNET5K_DIR)
 CFLAGS_MOD += -DMICROPY_PY_WIZNET5K=$(MICROPY_PY_WIZNET5K) -D_WIZCHIP_=$(MICROPY_PY_WIZNET5K)
-SRC_MOD += network_wiznet5k.c modnwwiznet5k.c
+#SRC_MOD += network_wiznet5k.c modnwwiznet5k.c
 SRC_MOD += $(addprefix $(WIZNET5K_DIR)/,\
         ethernet/w$(MICROPY_PY_WIZNET5K)/w$(MICROPY_PY_WIZNET5K).c \
         ethernet/wizchip_conf.c \
@@ -445,6 +445,9 @@ SRC_SHARED_MODULE = \
 
 ifeq ($(MICROPY_PY_NETWORK),1)
 SRC_SHARED_MODULE += socket/__init__.c network/__init__.c
+ifneq ($(MICROPY_PY_WIZNET5K),0)
+SRC_SHARED_MODULE += wiznet/__init__.c
+endif
 endif
 
 # SAMRs don't have a DAC

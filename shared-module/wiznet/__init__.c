@@ -498,6 +498,17 @@ const mod_network_nic_type_t mod_network_nic_type_wiznet5k = {
     .ioctl = wiznet5k_socket_ioctl,
 };
 
+STATIC const mp_rom_map_elem_t mp_module_wiznet_globals_table[] = {
+    { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_wiznet) },
+    { MP_ROM_QSTR(MP_QSTR_WIZNET5K), MP_ROM_PTR(&mod_network_nic_type_wiznet5k) },
+};
+STATIC MP_DEFINE_CONST_DICT(mp_module_wiznet_globals, mp_module_wiznet_globals_table);
+
+const mp_obj_module_t mp_module_wiznet = {
+    .base = { &mp_type_module },
+    .globals = (mp_obj_dict_t*)&mp_module_wiznet_globals,
+};
+
 // XXX used by drivers/wiznet5k/internet/dns/dns.c
 // Doesn't really belong here
 
