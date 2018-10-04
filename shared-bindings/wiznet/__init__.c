@@ -39,6 +39,7 @@
 #include "shared-bindings/digitalio/DigitalInOut.h"
 #include "shared-bindings/digitalio/DriveMode.h"
 #include "shared-bindings/busio/SPI.h"
+#include "shared-bindings/random/__init__.h"
 
 #if MICROPY_PY_WIZNET5K
 
@@ -334,6 +335,19 @@ STATIC mp_obj_t wiznet5k_socket_disconnect(mp_obj_t self_in) {
 }
 #endif
 
+void create_random_mac_address(uint8_t *mac) {
+    uint32_t rb1 = shared_modules_random_getrandbits(24);
+    uint32_t rb2 = shared_modules_random_getrandbits(24);
+    // first octet has multicast bit cleared and local bit set
+    // everything else is just set randomly
+    mac[0] = ((uint8_t)(rb1 >> 16) & 0x7f) | 0x02;
+    mac[1] = (uint8_t)(rb1 >> 8);
+    mac[2] = (uint8_t)(rb1);
+    mac[3] = (uint8_t)(rb2 >> 16);
+    mac[4] = (uint8_t)(rb2 >> 8);
+    mac[5] = (uint8_t)(rb2);
+}
+
 /******************************************************************************/
 // MicroPython bindings
 
@@ -366,7 +380,7 @@ STATIC mp_obj_t wiznet5k_make_new(const mp_obj_type_t *type, size_t n_args, size
     common_hal_digitalio_digitalinout_switch_to_output(&wiznet5k_obj.rst, 1, DRIVE_MODE_PUSH_PULL); 
 
     common_hal_digitalio_digitalinout_set_value(&wiznet5k_obj.rst, 0);
-    mp_hal_delay_ms(1); // datasheet says 2us
+    mp_hal_delay_us(10); // datasheet says 2us
     common_hal_digitalio_digitalinout_set_value(&wiznet5k_obj.rst, 1);
     mp_hal_delay_ms(160); // datasheet says 150ms
 
@@ -379,13 +393,13 @@ STATIC mp_obj_t wiznet5k_make_new(const mp_obj_type_t *type, size_t n_args, size
 
     // set some sensible default values; they are configurable using ifconfig method
     wiz_NetInfo netinfo = {
-        .mac = {0x00, 0x08, 0xdc, 0xab, 0xcd, 0xef},
         .ip = {192, 168, 0, 18},
         .sn = {255, 255, 255, 0},
         .gw = {192, 168, 0, 1},
         .dns = {8, 8, 8, 8}, // Google public DNS
         .dhcp = NETINFO_STATIC,
     };
+    create_random_mac_address(netinfo.mac);
     ctlnetwork(CN_SET_NETINFO, (void*)&netinfo);
 
     // seems we need a small delay after init
