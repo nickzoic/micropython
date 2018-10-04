@@ -29,10 +29,6 @@
 
 #include "shared-bindings/network/__init__.h"
 
-#if MICROPY_PY_LWIP
-typedef lwip_socket_obj_t socket_obj_t;
-#else
 typedef mod_network_socket_obj_t socket_obj_t;
-#endif
 
 #endif  // MICROPY_INCLUDED_SHARED_BINDINGS_SOCKET___INIT___H

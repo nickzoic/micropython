@@ -40,7 +40,7 @@
 #include "shared-bindings/digitalio/DriveMode.h"
 #include "shared-bindings/busio/SPI.h"
 
-#if MICROPY_PY_WIZNET5K && !MICROPY_PY_LWIP
+#if MICROPY_PY_WIZNET5K
 
 #include "ethernet/wizchip_conf.h"
 #include "ethernet/socket.h"
@@ -512,10 +512,10 @@ const mp_obj_module_t mp_module_wiznet = {
 // XXX used by drivers/wiznet5k/internet/dns/dns.c
 // Doesn't really belong here
 
-#include "tick.h"
+//#include "tick.h"
 
-uint32_t HAL_GetTick(void) {
-    return ticks_ms;
-}
+//uint32_t HAL_GetTick(void) {
+//    return ticks_ms;
+//}
 
-#endif // MICROPY_PY_WIZNET5K && !MICROPY_PY_LWIP
+#endif // MICROPY_PY_WIZNET5K

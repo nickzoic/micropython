@@ -393,20 +393,8 @@ extern const struct _mp_obj_module_t mp_module_wiznet;
     NETWORK_ROOT_POINTERS \
 
 void run_background_tasks(void);
-
-#ifndef MICROPY_PY_LWIP
-#define MICROPY_PY_LWIP 0
-#endif
-
-#if MICROPY_PY_NETWORK && MICROPY_PY_LWIP
-    extern void pyb_lwip_poll(void);
-    #define MICROPY_VM_HOOK_LOOP run_background_tasks(); pyb_lwip_poll();
-    #define MICROPY_VM_HOOK_RETURN run_background_tasks(); pyb_lwip_poll();
-#else
-    #define MICROPY_VM_HOOK_LOOP run_background_tasks();
-    #define MICROPY_VM_HOOK_RETURN run_background_tasks();
-#endif
-
+#define MICROPY_VM_HOOK_LOOP run_background_tasks();
+#define MICROPY_VM_HOOK_RETURN run_background_tasks();
 
 #define CIRCUITPY_AUTORELOAD_DELAY_MS 500
 #define CIRCUITPY_BOOT_OUTPUT_FILE "/boot_out.txt"
