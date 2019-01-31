@@ -19,9 +19,6 @@ CIRCUITPY_AUDIOBUSIO = 0
 # No I2CSlave implementation
 CIRCUITPY_I2CSLAVE = 0
 
-# nvm not yet implemented
-CIRCUITPY_NVM = 0
-
 # rtc not yet implemented
 CIRCUITPY_RTC = 0
 
