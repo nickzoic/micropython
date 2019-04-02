@@ -38,33 +38,30 @@ static void _intr_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action) {
     rotaryio_incrementalencoder_obj_t *self = _objs[pin];
     if (!self) return;
 
-    // reads a state 0 .. 3 *in order*.
-    uint8_t new_state = nrf_gpio_pin_read(self->pin_a);
-    new_state = (new_state << 1) + (new_state ^ nrf_gpio_pin_read(self->pin_b));
-
-    uint8_t change = (new_state - self->state) & 0x03;
-    if (change == 1) self->quarter++;
-    else if (change == 3) self->quarter--;
-    // ignore other state transitions
-
-    self->state = new_state;
+    int8_t new_state_a = nrf_gpio_pin_read(self->pin_a);
+    int8_t new_state_b = nrf_gpio_pin_read(self->pin_b);
+    if (self->state_a ^ new_state_b) self->division++;
+    if (self->state_b ^ new_state_a) self->division--;
+    self->state_a = new_state_a;
+    self->state_b = new_state_b;
 
     // logic from the atmel-samd port: provides some damping and scales movement 
-    // down by 4:1.  
-    if (self->quarter >= 4) { 
+    // down by divider:1.  
+    if (self->division >= self->divider) { 
         self->position++;
-        self->quarter = 0;
-    } else if (self->quarter <= -4) {
+        self->division = 0;
+    } else if (self->division <= -self->divider) {
         self->position--;
-        self->quarter = 0;
+        self->division = 0;
     }
 }
 
 void common_hal_rotaryio_incrementalencoder_construct(rotaryio_incrementalencoder_obj_t* self,
-    const mcu_pin_obj_t* pin_a, const mcu_pin_obj_t* pin_b) {
+    const mcu_pin_obj_t* pin_a, const mcu_pin_obj_t* pin_b, const uint8_t divider) {
 
     self->pin_a = pin_a->number;
     self->pin_b = pin_b->number;
+    self->divider = divider;
 
     _objs[self->pin_a] = self;
     _objs[self->pin_b] = self;

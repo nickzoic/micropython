@@ -49,6 +49,7 @@
 //|
 //|   :param ~microcontroller.Pin pin_a: First pin to read pulses from.
 //|   :param ~microcontroller.Pin pin_b: Second pin to read pulses from.
+//|   :param divider: (optional) How many pulse transitions per count (default 4)
 //|
 //|   For example::
 //|
@@ -65,10 +66,11 @@
 //|         last_position = position
 //|
 STATIC mp_obj_t rotaryio_incrementalencoder_make_new(const mp_obj_type_t *type, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    enum { ARG_pin_a, ARG_pin_b };
+    enum { ARG_pin_a, ARG_pin_b, ARG_divider };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_pin_a, MP_ARG_REQUIRED | MP_ARG_OBJ },
         { MP_QSTR_pin_b, MP_ARG_REQUIRED | MP_ARG_OBJ },
+        { MP_QSTR_divider, MP_ARG_INT, { .u_int = 4 } },
     };
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
@@ -81,10 +83,12 @@ STATIC mp_obj_t rotaryio_incrementalencoder_make_new(const mp_obj_type_t *type, 
     const mcu_pin_obj_t* pin_b = MP_OBJ_TO_PTR(args[ARG_pin_b].u_obj);
     assert_pin_free(pin_b);
 
+    uint8_t divider = (uint8_t)args[ARG_divider].u_int;
+
     rotaryio_incrementalencoder_obj_t *self = m_new_obj(rotaryio_incrementalencoder_obj_t);
     self->base.type = &rotaryio_incrementalencoder_type;
 
-    common_hal_rotaryio_incrementalencoder_construct(self, pin_a, pin_b);
+    common_hal_rotaryio_incrementalencoder_construct(self, pin_a, pin_b, divider);
 
     return MP_OBJ_FROM_PTR(self);
 }

@@ -33,7 +33,7 @@
 #include "supervisor/shared/translate.h"
 
 void common_hal_rotaryio_incrementalencoder_construct(rotaryio_incrementalencoder_obj_t* self,
-    const mcu_pin_obj_t* pin_a, const mcu_pin_obj_t* pin_b) {
+    const mcu_pin_obj_t* pin_a, const mcu_pin_obj_t* pin_b, const uint8_t divider) {
     if (!pin_a->has_extint || !pin_a->has_extint) {
         mp_raise_RuntimeError(translate("Both pins must support hardware interrupts"));
     }
@@ -54,6 +54,7 @@ void common_hal_rotaryio_incrementalencoder_construct(rotaryio_incrementalencode
     self->eic_channel_b = pin_b->extint_channel;
     self->pin_a = pin_a->number;
     self->pin_b = pin_b->number;
+    self->divider = divider;
 
     gpio_set_pin_function(self->pin_a, GPIO_PIN_FUNCTION_A);
     gpio_set_pin_pull_mode(self->pin_a, GPIO_PULL_UP);
@@ -151,10 +152,10 @@ void incrementalencoder_interrupt_handler(uint8_t channel) {
     }
 
     self->quarter_count += quarter_incr;
-    if (self->quarter_count >= 4) {
+    if (self->quarter_count >= self->divider) {
         self->position += 1;
         self->quarter_count = 0;
-    } else if (self->quarter_count <= -4) {
+    } else if (self->quarter_count <= -self->divider) {
         self->position -= 1;
         self->quarter_count = 0;
     }
