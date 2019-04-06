@@ -38,6 +38,31 @@ static void _intr_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action) {
     rotaryio_incrementalencoder_obj_t *self = _objs[pin];
     if (!self) return;
 
+    /* These two XORs detect forward and reverse state changes around the cycle
+    00 <-> 01 <-> 11 <-> 10 <-> 00.  If both bits have stayed the same, or both
+    bits flip, that's an illegal state transition and so no movement is detected.  
+
+        OLD  NEW   XOR  XOR  MOVE
+        A B A' B'  A^B' B^A'
+    
+        0 0  0 0    0    0    0
+        0 0  0 1    1    0   +1
+        0 0  1 0    0    1   -1
+        0 0  1 1    1    1    0
+        0 1  0 0    0    1   -1
+        0 1  0 1    1    1    0
+        0 1  1 0    0    0    0
+        0 1  1 1    1    0   +1
+        1 0  0 0    1    0   +1
+        1 0  0 1    0    0    0
+        1 0  1 0    1    1    0
+        1 0  1 1    0    1   -1
+        1 1  0 0    1    1    0
+        1 1  0 1    0    1   -1
+        1 1  1 0    1    0   +1
+        1 1  1 1    0    0    0
+    */
+
     int8_t new_state_a = nrf_gpio_pin_read(self->pin_a);
     int8_t new_state_b = nrf_gpio_pin_read(self->pin_b);
     if (self->state_a ^ new_state_b) self->division++;
