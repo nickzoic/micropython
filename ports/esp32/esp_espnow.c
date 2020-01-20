@@ -45,6 +45,9 @@
 
 #include "modnetwork.h"
 
+#define ESP_NOW_INTR_SEND 1
+#define ESP_NOW_INTR_RECV 2
+
 NORETURN void _esp_espnow_exceptions(esp_err_t e) {
    switch (e) {
       case ESP_ERR_ESPNOW_NOT_INIT:
@@ -81,26 +84,54 @@ static inline void _get_bytes(mp_obj_t str, size_t len, uint8_t *dst) {
     memcpy(dst, data, len);
 }
 
+// XXX TODO There's exactly one buffer and so sending or receiving frames too quickly
+// can therefore cause data to be lost *and* repeated.
+
+static uint8_t send_mac[ESP_NOW_ETH_ALEN];
+static esp_now_send_status_t send_status;
+
+static uint8_t recv_mac[ESP_NOW_ETH_ALEN];
+static int recv_len;
+static uint8_t recv_dat[ESP_NOW_MAX_DATA_LEN];
+
 static mp_obj_t send_cb_obj = mp_const_none;
 static mp_obj_t recv_cb_obj = mp_const_none;
+
+STATIC mp_obj_t send_cb_wrapper(mp_obj_t dummy) {
+    mp_obj_tuple_t *msg = mp_obj_new_tuple(2, NULL);
+    msg->items[0] = mp_obj_new_bytes(send_mac, ESP_NOW_ETH_ALEN);
+    msg->items[1] = (send_status == ESP_NOW_SEND_SUCCESS) ? mp_const_true : mp_const_false;
+    mp_call_function_1(send_cb_obj, msg);
+    return mp_const_none;
+
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(send_cb_wrapper_obj, send_cb_wrapper);
+
+STATIC mp_obj_t recv_cb_wrapper(mp_obj_t dummy) {
+    mp_obj_tuple_t *msg = mp_obj_new_tuple(2, NULL);
+    msg->items[0] = mp_obj_new_bytes(recv_mac, ESP_NOW_ETH_ALEN);
+    msg->items[1] = mp_obj_new_bytes(recv_dat, recv_len);
+    mp_call_function_1(recv_cb_obj, msg);
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(recv_cb_wrapper_obj, recv_cb_wrapper);
 
 STATIC void IRAM_ATTR send_cb(const uint8_t *macaddr, esp_now_send_status_t status)
 {
     if (send_cb_obj != mp_const_none) {
-        mp_obj_tuple_t *msg = mp_obj_new_tuple(2, NULL);
-        msg->items[0] = mp_obj_new_bytes(macaddr, ESP_NOW_ETH_ALEN);
-        msg->items[1] = (status == ESP_NOW_SEND_SUCCESS) ? mp_const_true : mp_const_false;
-        mp_sched_schedule(send_cb_obj, msg);
+	memcpy(send_mac, macaddr, ESP_NOW_ETH_ALEN);
+	send_status = status;
+        mp_sched_schedule((const mp_obj_t)&send_cb_wrapper_obj, mp_const_none);
     }
 }
 
 STATIC void IRAM_ATTR recv_cb(const uint8_t *macaddr, const uint8_t *data, int len) 
 {
     if (recv_cb_obj != mp_const_none) {
-        mp_obj_tuple_t *msg = mp_obj_new_tuple(2, NULL);
-        msg->items[0] = mp_obj_new_bytes(macaddr, ESP_NOW_ETH_ALEN);
-        msg->items[1] = mp_obj_new_bytes(data, len);
-        mp_sched_schedule(recv_cb_obj, msg);
+	memcpy(recv_mac, macaddr, ESP_NOW_ETH_ALEN);
+	recv_len = len;
+	memcpy(recv_dat, data, len);
+        mp_sched_schedule((const mp_obj_t)&recv_cb_wrapper_obj, mp_const_none);
     }
 } 
 
@@ -306,6 +337,8 @@ STATIC const mp_rom_map_elem_t espnow_globals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_on_recv), MP_ROM_PTR(&espnow_on_recv_obj) },
     { MP_ROM_QSTR(MP_QSTR_peer_count), MP_ROM_PTR(&espnow_peer_count_obj) },
     { MP_ROM_QSTR(MP_QSTR_version), MP_ROM_PTR(&espnow_version_obj) },
+    { MP_ROM_QSTR(MP_QSTR_ON_SEND), MP_ROM_INT(ESP_NOW_INTR_SEND) },
+    { MP_ROM_QSTR(MP_QSTR_ON_RECV), MP_ROM_INT(ESP_NOW_INTR_RECV) },
 };
 STATIC MP_DEFINE_CONST_DICT(espnow_globals_dict, espnow_globals_dict_table);
 
