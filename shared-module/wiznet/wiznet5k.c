@@ -296,17 +296,22 @@ int wiznet5k_socket_setsockopt(mod_network_socket_obj_t *socket, mp_uint_t level
 }
 
 int wiznet5k_socket_settimeout(mod_network_socket_obj_t *socket, mp_uint_t timeout_ms, int *_errno) {
-    // TODO
-    *_errno = MP_EINVAL;
-    return -1;
+    // TODO : there's no "settimeout" only blocking or non-blocking, so we need to
+    // manually poll if the timeout is anything other than infinite.
 
-    /*
     if (timeout_ms == 0) {
-        // set non-blocking mode
         uint8_t arg = SOCK_IO_NONBLOCK;
         WIZCHIP_EXPORT(ctlsocket)(socket->u_param.fileno, CS_SET_IOMODE, &arg);
+    } else if (timeout_ms == ~(mp_uint_t)0) {
+        uint8_t arg = SOCK_IO_BLOCK;
+        WIZCHIP_EXPORT(ctlsocket)(socket->u_param.fileno, CS_SET_IOMODE, &arg);
+    } else {
+	// XXX for now just return EINVAL if this is anything other than 0 (non-blocking)
+	// or -1 (indefinite blocking)
+        *_errno = MP_EINVAL;
+        return -1;
     }
-    */
+    return 0;
 }
 
 int wiznet5k_socket_ioctl(mod_network_socket_obj_t *socket, mp_uint_t request, mp_uint_t arg, int *_errno) {
