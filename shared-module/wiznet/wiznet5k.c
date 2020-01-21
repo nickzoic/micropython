@@ -416,7 +416,7 @@ mp_obj_t wiznet5k_create(mp_obj_t spi_in, mp_obj_t cs_in, mp_obj_t rst_in) {
     wiz_NetInfo netinfo = {
         .dhcp = NETINFO_DHCP,
     };
-    network_module_create_random_mac_address(netinfo.mac);
+    network_module_create_hashed_mac_address(netinfo.mac);
     ctlnetwork(CN_SET_NETINFO, (void*)&netinfo);
 
     // seems we need a small delay after init

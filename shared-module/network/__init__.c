@@ -25,6 +25,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 
 #include "py/objlist.h"
 #include "py/runtime.h"
@@ -32,8 +33,8 @@
 #include "py/mperrno.h"
 
 #include "shared-bindings/random/__init__.h"
-
 #include "shared-module/network/__init__.h"
+#include "shared-bindings/microcontroller/Processor.h"
 
 // mod_network_nic_list needs to be declared in mpconfigport.h 
 
@@ -98,6 +99,18 @@ void network_module_create_random_mac_address(uint8_t *mac) {
     mac[3] = (uint8_t)(rb2 >> 16);
     mac[4] = (uint8_t)(rb2 >> 8);
     mac[5] = (uint8_t)(rb2);
+}
+
+void network_module_create_hashed_mac_address(uint8_t *mac) {
+    uint8_t uid[16] = {0};
+    common_hal_mcu_processor_get_uid(uid);
+
+    // XXX TODO hash me
+    memcpy(mac, uid, 6);
+
+    // first octet has multicast bit (0) cleared and local bit (1) set
+    mac[0] &= 0xfe;
+    mac[0] |= 0x02;
 }
 
 uint16_t network_module_create_random_source_tcp_port(void) {
