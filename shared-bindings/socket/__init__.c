@@ -468,6 +468,40 @@ STATIC mp_obj_t socket_setblocking(mp_obj_t self_in, mp_obj_t blocking) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(socket_setblocking_obj, socket_setblocking);
 
+// method socket.makefile()
+STATIC mp_obj_t socket_makefile(mp_obj_t self_in) {
+    // XXX just returns self, just like micropython does it but kinda lame.
+    return self_in;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(socket_makefile_obj, socket_makefile);
+
+// method socket.fileno()
+STATIC mp_obj_t socket_fileno(const mp_obj_t arg0) {
+    // XXX I don't think fileno is actually meaningful in circuitpython
+    // so probably should always return -1 anyway.
+    mod_network_socket_obj_t *self = MP_OBJ_TO_PTR(arg0);
+    return mp_obj_new_int(self->u_param.fileno);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(socket_fileno_obj, socket_fileno);
+
+STATIC mp_uint_t socket_stream_read(mp_obj_t self_in, void *buf, mp_uint_t size, int *errcode) {
+    mod_network_socket_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    if (self->nic == MP_OBJ_NULL) {
+        // not connected
+        mp_raise_OSError(MP_ENOTCONN);
+    }
+    return self->nic_type->recv(self, buf, size, errcode);
+}
+
+STATIC mp_uint_t socket_stream_write(mp_obj_t self_in, const void *buf, mp_uint_t size, int *errcode) {
+    mod_network_socket_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    if (self->nic == MP_OBJ_NULL) {
+        // not connected
+        mp_raise_OSError(MP_ENOTCONN);
+    }
+    return self->nic_type->send(self, buf, size, errcode);
+}
+
 STATIC const mp_rom_map_elem_t socket_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&mp_stream_close_obj) },
     { MP_ROM_QSTR(MP_QSTR_close), MP_ROM_PTR(&mp_stream_close_obj) },
@@ -483,6 +517,14 @@ STATIC const mp_rom_map_elem_t socket_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_setsockopt), MP_ROM_PTR(&socket_setsockopt_obj) },
     { MP_ROM_QSTR(MP_QSTR_settimeout), MP_ROM_PTR(&socket_settimeout_obj) },
     { MP_ROM_QSTR(MP_QSTR_setblocking), MP_ROM_PTR(&socket_setblocking_obj) },
+    { MP_ROM_QSTR(MP_QSTR_makefile), MP_ROM_PTR(&socket_makefile_obj) },
+    // methods for when we're being a file
+    { MP_ROM_QSTR(MP_QSTR_fileno), MP_ROM_PTR(&socket_fileno_obj) },
+    { MP_ROM_QSTR(MP_QSTR_read), MP_ROM_PTR(&mp_stream_read_obj) },
+    { MP_ROM_QSTR(MP_QSTR_readinto), MP_ROM_PTR(&mp_stream_readinto_obj) },
+    { MP_ROM_QSTR(MP_QSTR_readline), MP_ROM_PTR(&mp_stream_unbuffered_readline_obj) },
+    { MP_ROM_QSTR(MP_QSTR_write), MP_ROM_PTR(&mp_stream_write_obj) },
+
 };
 
 STATIC MP_DEFINE_CONST_DICT(socket_locals_dict, socket_locals_dict_table);
@@ -501,6 +543,8 @@ mp_uint_t socket_ioctl(mp_obj_t self_in, mp_uint_t request, uintptr_t arg, int *
 
 STATIC const mp_stream_p_t socket_stream_p = {
     .ioctl = socket_ioctl,
+    .read = socket_stream_read,
+    .write = socket_stream_write,
     .is_text = false,
 };
 
