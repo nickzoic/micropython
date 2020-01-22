@@ -36,6 +36,8 @@
 #include "shared-module/network/__init__.h"
 #include "shared-bindings/microcontroller/Processor.h"
 
+#include "lib/utils/lookup3.h"
+
 // mod_network_nic_list needs to be declared in mpconfigport.h 
 
 
@@ -102,15 +104,20 @@ void network_module_create_random_mac_address(uint8_t *mac) {
 }
 
 void network_module_create_hashed_mac_address(uint8_t *mac) {
-    uint8_t uid[16] = {0};
-    common_hal_mcu_processor_get_uid(uid);
+    uint8_t uid[COMMON_HAL_MCU_PROCESSOR_UID_LENGTH] = {0};
+    common_hal_mcu_processor_get_uid((uint8_t *)uid);
 
-    // XXX TODO hash me
-    memcpy(mac, uid, 6);
+    uint32_t rb1 = 0xdeadbeef, rb2 = 0xcabba9e5;
+    hashlittle2(uid, COMMON_HAL_MCU_PROCESSOR_UID_LENGTH, &rb1, &rb2);
 
     // first octet has multicast bit (0) cleared and local bit (1) set
-    mac[0] &= 0xfe;
-    mac[0] |= 0x02;
+    // everything else is just set from the hash
+    mac[0] = ((uint8_t)(rb1 >> 16) & 0xfe) | 0x02;
+    mac[1] = (uint8_t)(rb1 >> 8);
+    mac[2] = (uint8_t)(rb1);
+    mac[3] = (uint8_t)(rb2 >> 16);
+    mac[4] = (uint8_t)(rb2 >> 8);
+    mac[5] = (uint8_t)(rb2);
 }
 
 uint16_t network_module_create_random_source_tcp_port(void) {

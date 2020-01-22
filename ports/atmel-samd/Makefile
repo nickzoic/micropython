@@ -231,6 +231,7 @@ SRC_C = \
 	lib/utils/pyexec.c \
 	lib/utils/stdout_helpers.c \
 	lib/utils/sys_stdio_mphal.c \
+	lib/utils/lookup3.c \
 	mphalport.c \
 	peripherals/samd/$(CHIP_FAMILY)/adc.c \
 	peripherals/samd/$(CHIP_FAMILY)/cache.c \
