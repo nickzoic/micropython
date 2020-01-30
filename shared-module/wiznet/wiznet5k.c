@@ -4,6 +4,7 @@
  * The MIT License (MIT)
  *
  * Copyright (c) 2014 Damien P. George
+ *    with some modifications by Nick Moore 2019-2020
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -51,6 +52,8 @@
 #include "internet/dhcp/dhcp.h"
 
 #include "shared-module/wiznet/wiznet5k.h"
+
+#define WIZNET_POLL_DELAY_MS (10)
 
 STATIC wiznet5k_obj_t wiznet5k_obj;
 
@@ -170,7 +173,10 @@ int wiznet5k_socket_listen(mod_network_socket_obj_t *socket, mp_int_t backlog, i
 }
 
 int wiznet5k_socket_accept(mod_network_socket_obj_t *socket, mod_network_socket_obj_t *socket2, byte *ip, mp_uint_t *port, int *_errno) {
-    for (;;) {
+    // XXX this logic is badly tangled
+    mp_int_t timeout_ms = wiznet5k_obj.timeout[socket->u_param.fileno];
+    uint64_t timeout = timeout_ms != ~(mp_int_t)0 ? ticks_ms + timeout_ms : 0;
+    do {
         int sr = getSn_SR((uint8_t)socket->u_param.fileno);
         if (sr == SOCK_ESTABLISHED) {
             socket2->u_param = socket->u_param;
@@ -180,6 +186,7 @@ int wiznet5k_socket_accept(mod_network_socket_obj_t *socket, mod_network_socket_
             // WIZnet turns the listening socket into the client socket, so we
             // need to re-bind and re-listen on another socket for the server.
             // TODO handle errors, especially no-more-sockets error
+	    // XXX yes, very much handle errors! There's only 8 sockets! 
             socket->u_param.domain = MOD_NETWORK_AF_INET;
             socket->u_param.fileno = -1;
             int _errno2;
@@ -191,6 +198,12 @@ int wiznet5k_socket_accept(mod_network_socket_obj_t *socket, mod_network_socket_
                 //printf("(bad relisten %d)\n", _errno2);
             }
 
+	    // Timeout & blocking on the new listening socket is inherited from the old socket.
+	    mp_uint_t old_timeout = wiznet5k_obj.timeout[socket2->u_param.fileno];
+            uint8_t arg = (old_timeout == ~(mp_uint_t)0) ? SOCK_IO_BLOCK : SOCK_IO_NONBLOCK;
+            WIZCHIP_EXPORT(ctlsocket)(socket->u_param.fileno, CS_SET_IOMODE, &arg);
+	    wiznet5k_obj.timeout[socket->u_param.fileno] = old_timeout;
+
             return 0;
         }
         if (sr == SOCK_CLOSED || sr == SOCK_CLOSE_WAIT) {
@@ -198,12 +211,17 @@ int wiznet5k_socket_accept(mod_network_socket_obj_t *socket, mod_network_socket_
             *_errno = MP_ENOTCONN; // ??
             return -1;
         }
-        mp_hal_delay_ms(1);
-    }
+        mp_hal_delay_ms(WIZNET_POLL_DELAY_MS);
+    } while (!timeout || ticks_ms < timeout);
+
+    // XXX what is correct return on failure to accept?
+    *_errno = MP_ENOTCONN;
+    return -1;
 }
 
 int wiznet5k_socket_connect(mod_network_socket_obj_t *socket, byte *ip, mp_uint_t port, int *_errno) {
     uint16_t src_port = network_module_create_random_source_tcp_port();
+    uint64_t timeout = ticks_ms + wiznet5k_obj.timeout[socket->u_param.fileno];
     // make sure same outgoing port number can't be in use by two different sockets.
     src_port = (src_port & ~(_WIZCHIP_SOCK_NUM_ - 1)) | socket->u_param.fileno;
 
@@ -212,10 +230,12 @@ int wiznet5k_socket_connect(mod_network_socket_obj_t *socket, byte *ip, mp_uint_
         return -1;
     }
 
+retry:
     // now connect
     MP_THREAD_GIL_EXIT();
     mp_int_t ret = WIZCHIP_EXPORT(connect)(socket->u_param.fileno, ip, port);
     MP_THREAD_GIL_ENTER();
+    if (ret == SOCK_BUSY && ticks_ms < timeout) { mp_hal_delay_ms(WIZNET_POLL_DELAY_MS); goto retry; }
 
     if (ret < 0) {
         wiznet5k_socket_close(socket);
@@ -228,9 +248,13 @@ int wiznet5k_socket_connect(mod_network_socket_obj_t *socket, byte *ip, mp_uint_
 }
 
 mp_uint_t wiznet5k_socket_send(mod_network_socket_obj_t *socket, const byte *buf, mp_uint_t len, int *_errno) {
+    uint64_t timeout = ticks_ms + wiznet5k_obj.timeout[socket->u_param.fileno];
+
+retry:
     MP_THREAD_GIL_EXIT();
     mp_int_t ret = WIZCHIP_EXPORT(send)(socket->u_param.fileno, (byte*)buf, len);
     MP_THREAD_GIL_ENTER();
+    if (ret == SOCK_BUSY && ticks_ms < timeout) { mp_hal_delay_ms(WIZNET_POLL_DELAY_MS); goto retry; }
 
     // TODO convert Wiz errno's to POSIX ones
     if (ret < 0) {
@@ -242,10 +266,14 @@ mp_uint_t wiznet5k_socket_send(mod_network_socket_obj_t *socket, const byte *buf
 }
 
 mp_uint_t wiznet5k_socket_recv(mod_network_socket_obj_t *socket, byte *buf, mp_uint_t len, int *_errno) {
+    uint64_t timeout = ticks_ms + wiznet5k_obj.timeout[socket->u_param.fileno];
+
+retry:
     MP_THREAD_GIL_EXIT();
     mp_int_t ret = WIZCHIP_EXPORT(recv)(socket->u_param.fileno, buf, len);
     MP_THREAD_GIL_ENTER();
-
+    if (ret == SOCK_BUSY && ticks_ms < timeout) { mp_hal_delay_ms(WIZNET_POLL_DELAY_MS); goto retry; }
+    
     // TODO convert Wiz errno's to POSIX ones
     if (ret < 0) {
         wiznet5k_socket_close(socket);
@@ -256,6 +284,7 @@ mp_uint_t wiznet5k_socket_recv(mod_network_socket_obj_t *socket, byte *buf, mp_u
 }
 
 mp_uint_t wiznet5k_socket_sendto(mod_network_socket_obj_t *socket, const byte *buf, mp_uint_t len, byte *ip, mp_uint_t port, int *_errno) {
+    uint64_t timeout = ticks_ms + wiznet5k_obj.timeout[socket->u_param.fileno];
     if (socket->u_param.domain == 0) {
         // socket not opened; use "bind" function to open the socket in client mode
         if (wiznet5k_socket_bind(socket, ip, 0, _errno) != 0) {
@@ -263,9 +292,11 @@ mp_uint_t wiznet5k_socket_sendto(mod_network_socket_obj_t *socket, const byte *b
         }
     }
 
+retry:
     MP_THREAD_GIL_EXIT();
     mp_int_t ret = WIZCHIP_EXPORT(sendto)(socket->u_param.fileno, (byte*)buf, len, ip, port);
     MP_THREAD_GIL_ENTER();
+    if (ret == SOCK_BUSY && ticks_ms < timeout) { mp_hal_delay_ms(WIZNET_POLL_DELAY_MS); goto retry; }
 
     if (ret < 0) {
         wiznet5k_socket_close(socket);
@@ -277,9 +308,14 @@ mp_uint_t wiznet5k_socket_sendto(mod_network_socket_obj_t *socket, const byte *b
 
 mp_uint_t wiznet5k_socket_recvfrom(mod_network_socket_obj_t *socket, byte *buf, mp_uint_t len, byte *ip, mp_uint_t *port, int *_errno) {
     uint16_t port2;
+    uint64_t timeout = ticks_ms + wiznet5k_obj.timeout[socket->u_param.fileno];
+   
+retry: 
     MP_THREAD_GIL_EXIT();
     mp_int_t ret = WIZCHIP_EXPORT(recvfrom)(socket->u_param.fileno, buf, len, ip, &port2);
     MP_THREAD_GIL_ENTER();
+    if (ret == SOCK_BUSY && ticks_ms < timeout) { mp_hal_delay_ms(WIZNET_POLL_DELAY_MS); goto retry; }
+
     *port = port2;
     if (ret < 0) {
         wiznet5k_socket_close(socket);
@@ -296,20 +332,16 @@ int wiznet5k_socket_setsockopt(mod_network_socket_obj_t *socket, mp_uint_t level
 }
 
 int wiznet5k_socket_settimeout(mod_network_socket_obj_t *socket, mp_uint_t timeout_ms, int *_errno) {
-    // TODO : there's no "settimeout" only blocking or non-blocking, so we need to
+    // There's no "settimeout" only blocking or non-blocking, so we need to
     // manually poll if the timeout is anything other than infinite.
 
-    if (timeout_ms == 0) {
-        uint8_t arg = SOCK_IO_NONBLOCK;
-        WIZCHIP_EXPORT(ctlsocket)(socket->u_param.fileno, CS_SET_IOMODE, &arg);
-    } else if (timeout_ms == ~(mp_uint_t)0) {
+    if (timeout_ms == ~(mp_uint_t)0) {
         uint8_t arg = SOCK_IO_BLOCK;
         WIZCHIP_EXPORT(ctlsocket)(socket->u_param.fileno, CS_SET_IOMODE, &arg);
     } else {
-	// XXX for now just return EINVAL if this is anything other than 0 (non-blocking)
-	// or -1 (indefinite blocking)
-        *_errno = MP_EINVAL;
-        return -1;
+	wiznet5k_obj.timeout[socket->u_param.fileno] = timeout_ms;
+        uint8_t arg = SOCK_IO_NONBLOCK;
+        WIZCHIP_EXPORT(ctlsocket)(socket->u_param.fileno, CS_SET_IOMODE, &arg);
     }
     return 0;
 }
