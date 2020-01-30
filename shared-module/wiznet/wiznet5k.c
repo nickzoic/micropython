@@ -163,6 +163,7 @@ int wiznet5k_socket_bind(mod_network_socket_obj_t *socket, byte *ip, mp_uint_t p
 }
 
 int wiznet5k_socket_listen(mod_network_socket_obj_t *socket, mp_int_t backlog, int *_errno) {
+    // XXX backlog is ignored.
     mp_int_t ret = WIZCHIP_EXPORT(listen)(socket->u_param.fileno);
     if (ret < 0) {
         wiznet5k_socket_close(socket);
@@ -173,49 +174,46 @@ int wiznet5k_socket_listen(mod_network_socket_obj_t *socket, mp_int_t backlog, i
 }
 
 int wiznet5k_socket_accept(mod_network_socket_obj_t *socket, mod_network_socket_obj_t *socket2, byte *ip, mp_uint_t *port, int *_errno) {
-    // XXX this logic is badly tangled
-    mp_int_t timeout_ms = wiznet5k_obj.timeout[socket->u_param.fileno];
-    uint64_t timeout = timeout_ms != ~(mp_int_t)0 ? ticks_ms + timeout_ms : 0;
+    
+    uint64_t timeout = ticks_ms + wiznet5k_obj.timeout[socket->u_param.fileno];
+    int sr;
     do {
-        int sr = getSn_SR((uint8_t)socket->u_param.fileno);
-        if (sr == SOCK_ESTABLISHED) {
-            socket2->u_param = socket->u_param;
-            getSn_DIPR((uint8_t)socket2->u_param.fileno, ip);
-            *port = getSn_PORT(socket2->u_param.fileno);
+        sr = getSn_SR((uint8_t)socket->u_param.fileno);
+	if (sr != SOCK_LISTEN) break;
+        mp_hal_delay_ms(WIZNET_POLL_DELAY_MS);
+    } while (ticks_ms < timeout);
 
-            // WIZnet turns the listening socket into the client socket, so we
-            // need to re-bind and re-listen on another socket for the server.
-            // TODO handle errors, especially no-more-sockets error
-	    // XXX yes, very much handle errors! There's only 8 sockets! 
-            socket->u_param.domain = MOD_NETWORK_AF_INET;
-            socket->u_param.fileno = -1;
-            int _errno2;
-            if (wiznet5k_socket_socket(socket, &_errno2) != 0) {
-                //printf("(bad resocket %d)\n", _errno2);
-            } else if (wiznet5k_socket_bind(socket, NULL, *port, &_errno2) != 0) {
-                //printf("(bad rebind %d)\n", _errno2);
-            } else if (wiznet5k_socket_listen(socket, 0, &_errno2) != 0) {
-                //printf("(bad relisten %d)\n", _errno2);
-            }
+    if (sr == SOCK_ESTABLISHED) {
+        socket2->u_param = socket->u_param;
+        getSn_DIPR((uint8_t)socket2->u_param.fileno, ip);
+        *port = getSn_PORT(socket2->u_param.fileno);
 
+        // WIZnet turns the listening socket into the client socket, so we
+        // need to re-bind and re-listen on another socket for the server.
+        
+        socket->u_param.domain = MOD_NETWORK_AF_INET;
+        socket->u_param.fileno = -1;
+        if (wiznet5k_socket_socket(socket, _errno) == 0) {
 	    // Timeout & blocking on the new listening socket is inherited from the old socket.
 	    mp_uint_t old_timeout = wiznet5k_obj.timeout[socket2->u_param.fileno];
             uint8_t arg = (old_timeout == ~(mp_uint_t)0) ? SOCK_IO_BLOCK : SOCK_IO_NONBLOCK;
             WIZCHIP_EXPORT(ctlsocket)(socket->u_param.fileno, CS_SET_IOMODE, &arg);
 	    wiznet5k_obj.timeout[socket->u_param.fileno] = old_timeout;
 
-            return 0;
-        }
-        if (sr == SOCK_CLOSED || sr == SOCK_CLOSE_WAIT) {
-            wiznet5k_socket_close(socket);
-            *_errno = MP_ENOTCONN; // ??
-            return -1;
-        }
-        mp_hal_delay_ms(WIZNET_POLL_DELAY_MS);
-    } while (!timeout || ticks_ms < timeout);
+	    // bind and set new listening socket (note listen backlog is ignored)
+            if (wiznet5k_socket_bind(socket, NULL, *port, _errno) == 0 &&
+			    wiznet5k_socket_listen(socket, 0, _errno) != 0) return 0;
 
-    // XXX what is correct return on failure to accept?
-    *_errno = MP_ENOTCONN;
+	    // otherwise, close off sockets and handle errors.
+	    wiznet5k_socket_close(socket);
+	}
+	wiznet5k_socket_close(socket2);
+    } else {
+        // sr could be SOCK_LISTEN for a timeout, or some other code such as 
+	// SOCK_CLOSED, SOCK_CLOSE_WAIT if there's an error.
+        wiznet5k_socket_close(socket);
+        *_errno = (sr == SOCK_LISTEN) ? MP_EAGAIN : MP_ENOTCONN;
+    }
     return -1;
 }
 
